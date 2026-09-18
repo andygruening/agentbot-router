@@ -31,16 +31,12 @@ export type AgentJob = {
   signal?: NodeJS.Signals | null;
   error?: string;
   sessionId?: string;
-  label?: string;
   kind?: string;
-  createStdoutPath?: string;
-  createStderrPath?: string;
-  terminalSnapshotPath?: string;
 };
 
 export type WorkerResult = {
   status: "completed" | "blocked";
-  marker: "SUPERSET_WORKER_DONE" | "SUPERSET_WORKER_BLOCKED";
+  marker: "AGENT_WORKER_DONE" | "AGENT_WORKER_BLOCKED";
   task?: string;
   summary?: string;
   files?: string;

@@ -20,10 +20,9 @@ test("buildAgentPrompt leaves GitHub responses to the receiver", () => {
   assert.match(prompt, /gh pr checkout <number> --repo <repo>/);
   assert.match(prompt, /gh pr create --repo <repo>/);
   assert.match(prompt, /do not leave changes only in the local workspace/);
-  assert.match(prompt, /SUPERSET_WORKER_BLOCKED/);
-  assert.match(prompt, /SUPERSET_WORKER_DONE/);
-  assert.doesNotMatch(prompt, /summary from SUPERSET_WORKER_DONE/);
-  assert.doesNotMatch(prompt, /SUPERSET_AGENT_OUTPUT/);
+  assert.match(prompt, /AGENT_WORKER_BLOCKED/);
+  assert.match(prompt, /AGENT_WORKER_DONE/);
+  assert.doesNotMatch(prompt, /summary from AGENT_WORKER_DONE/);
   assert.doesNotMatch(prompt, /Full parsed payload/);
   assert.doesNotMatch(prompt, /Raw request body/);
   assert.doesNotMatch(prompt, /Parsed payload:/);
@@ -36,8 +35,8 @@ function buildContext(): WebhookContext {
   return {
     integrationId: "github",
     integrationName: "GitHub",
-    agentRunnerId: "superset",
-    agentRunnerName: "Superset",
+    agentRunnerId: "codex",
+    agentRunnerName: "Codex CLI",
     receivedAt: "2026-08-28T00:00:00.000Z",
     eventName: "issue_comment",
     deliveryId: "delivery-1",

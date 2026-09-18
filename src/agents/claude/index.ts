@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   AgentCompletionHandler,
@@ -13,7 +13,7 @@ import type { WebhookContext } from "../../core/webhook-context.ts";
 import { parseWorkerResult } from "../shared/completion-envelope.ts";
 import { writeJsonFileAtomic } from "../shared/json-files.ts";
 
-type CodexProcessResult = {
+type ClaudeProcessResult = {
   exitCode: number | null;
   signal: NodeJS.Signals | null;
   error?: unknown;
@@ -38,13 +38,13 @@ const baseEnvKeys = [
 ];
 const maxLogPreviewChars = 2_000;
 
-export const codexAgentRunner: AgentRunner = {
-  id: "codex",
-  displayName: "Codex CLI",
-  start: startCodexAgentJob
+export const claudeAgentRunner: AgentRunner = {
+  id: "claude",
+  displayName: "Claude CLI",
+  start: startClaudeAgentJob
 };
 
-export async function startCodexAgentJob(
+export async function startClaudeAgentJob(
   config: AppConfig,
   context: WebhookContext,
   prompt: string,
@@ -56,25 +56,25 @@ export async function startCodexAgentJob(
   await mkdir(context.jobDir, { recursive: true });
   await writeFile(context.promptPath, prompt);
 
-  const stdoutPath = path.join(context.jobDir, "codex-exec.stdout.log");
-  const stderrPath = path.join(context.jobDir, "codex-exec.stderr.log");
-  const lastMessagePath = path.join(context.jobDir, "codex-last-message.md");
+  const stdoutPath = path.join(context.jobDir, "claude.stdout.log");
+  const stderrPath = path.join(context.jobDir, "claude.stderr.log");
+  const lastMessagePath = path.join(context.jobDir, "claude-final-message.md");
   const agentOutputPath = context.agentOutputPath;
   const resultPath = path.join(context.jobDir, "agent-result.json");
   const metadataPath = path.join(context.jobDir, "job.json");
   const startedAt = new Date().toISOString();
-  const command = config.agents.codex.command;
+  const command = config.agents.claude.command;
   const agent = context.agentSelection.agent;
-  const args = buildCodexExecArgs(config, config.agents.codex.defaultModel, lastMessagePath);
+  const args = buildClaudeExecArgs(config);
 
-  logCodexJobStarting(config, context, args);
+  logClaudeJobStarting(config, context, args);
 
   const baseJob: AgentJob = {
     jobId: context.jobId,
     status: "running",
     agent,
-    runnerId: "codex",
-    runnerName: "Codex CLI",
+    runnerId: "claude",
+    runnerName: "Claude CLI",
     command,
     args,
     jobDir: context.jobDir,
@@ -89,7 +89,7 @@ export async function startCodexAgentJob(
   };
 
   if (config.core.dryRun) {
-    const dryRunOutput = "Dry run; Codex CLI was not launched.";
+    const dryRunOutput = "Dry run; Claude CLI was not launched.";
     const dryRunResult: WorkerResult = {
       status: "completed",
       marker: "AGENT_WORKER_DONE",
@@ -105,13 +105,13 @@ export async function startCodexAgentJob(
     await writeFile(agentOutputPath, dryRunOutput);
     await writeAgentResult(resultPath, dryRunResult);
     await onComplete(job, dryRunResult);
-    logCodexJobFinished(context, job, dryRunResult);
+    logClaudeJobFinished(context, job, dryRunResult);
     return job;
   }
 
   const child = spawn(command, args, {
-    cwd: process.cwd(),
-    env: buildCodexEnv(config.agents.codex, env),
+    cwd: config.agents.claude.workingDirectory ?? process.cwd(),
+    env: buildClaudeEnv(config.agents.claude, env),
     stdio: ["pipe", "pipe", "pipe"]
   });
   const stdoutChunks: Buffer[] = [];
@@ -123,7 +123,7 @@ export async function startCodexAgentJob(
   child.stderr?.on("data", (chunk: Buffer) => {
     stderrChunks.push(chunk);
   });
-  const processDone = waitForProcess(child, config.agents.codex.execTimeoutMs);
+  const processDone = waitForProcess(child, config.agents.claude.execTimeoutMs);
 
   try {
     await waitForSpawn(child);
@@ -136,8 +136,8 @@ export async function startCodexAgentJob(
     };
     await writeJobMetadata(failedJob);
     await onComplete(failedJob, undefined);
-    logCodexJobFinished(context, failedJob, undefined);
-    throw new CodexAgentLaunchError(failedJob);
+    logClaudeJobFinished(context, failedJob, undefined);
+    throw new ClaudeAgentLaunchError(failedJob);
   }
 
   const runningJob: AgentJob = {
@@ -146,8 +146,8 @@ export async function startCodexAgentJob(
     kind: "process"
   };
   await writeJobMetadata(runningJob);
-  logCodexJobStarted(context, runningJob);
-  void monitorCodexProcess(
+  logClaudeJobStarted(context, runningJob);
+  void monitorClaudeProcess(
     config,
     context,
     runningJob,
@@ -161,38 +161,16 @@ export async function startCodexAgentJob(
   return runningJob;
 }
 
-export function buildCodexExecArgs(
-  config: AppConfig,
-  model: string,
-  lastMessagePath: string
-): string[] {
-  const args = ["exec", "--model", model];
-
-  const workingDirectory = config.agents.codex.workingDirectory ?? process.cwd();
-  args.push("--cd", workingDirectory);
-
-  if (config.agents.codex.sandbox) {
-    args.push("--sandbox", config.agents.codex.sandbox);
+export function buildClaudeExecArgs(config: AppConfig): string[] {
+  const args = ["--print", "--output-format", "text"];
+  if (config.agents.claude.model) {
+    args.push("--model", config.agents.claude.model);
   }
-
-  if (config.agents.codex.approvalPolicy) {
-    args.push("--ask-for-approval", config.agents.codex.approvalPolicy);
-  }
-
-  args.push(
-    "--output-last-message",
-    lastMessagePath,
-    "--color",
-    "never",
-    ...config.agents.codex.extraArgs,
-    "-"
-  );
-
-  return args;
+  return [...args, ...config.agents.claude.extraArgs, "Follow the task instructions on stdin."];
 }
 
-export function buildCodexEnv(
-  config: Pick<AppConfig["agents"]["codex"], "envPassthrough">,
+export function buildClaudeEnv(
+  config: Pick<AppConfig["agents"]["claude"], "envPassthrough">,
   env: NodeJS.ProcessEnv = process.env
 ): NodeJS.ProcessEnv {
   const allowedKeys = new Set([...baseEnvKeys, ...config.envPassthrough]);
@@ -208,20 +186,20 @@ export function buildCodexEnv(
   return childEnv;
 }
 
-export class CodexAgentLaunchError extends Error {
+export class ClaudeAgentLaunchError extends Error {
   readonly job: AgentJob;
 
   constructor(job: AgentJob) {
-    super(job.error ?? "Codex CLI agent launch failed");
+    super(job.error ?? "Claude CLI agent launch failed");
     this.job = job;
   }
 }
 
-async function monitorCodexProcess(
+async function monitorClaudeProcess(
   config: AppConfig,
   context: WebhookContext,
   job: AgentJob,
-  processDone: Promise<CodexProcessResult>,
+  processDone: Promise<ClaudeProcessResult>,
   stdoutChunks: Buffer[],
   stderrChunks: Buffer[],
   onComplete: AgentCompletionHandler
@@ -244,7 +222,7 @@ async function monitorCodexProcess(
     };
     await writeJobMetadata(failedJob);
     await onComplete(failedJob, undefined);
-    logCodexJobFinished(context, failedJob, undefined);
+    logClaudeJobFinished(context, failedJob, undefined);
     return;
   }
 
@@ -255,11 +233,11 @@ async function monitorCodexProcess(
       finishedAt: new Date().toISOString(),
       exitCode: processResult.exitCode,
       signal: processResult.signal,
-      error: `Timed out after ${config.agents.codex.execTimeoutMs}ms waiting for Codex CLI`
+      error: `Timed out after ${config.agents.claude.execTimeoutMs}ms waiting for Claude CLI`
     };
     await writeJobMetadata(timedOutJob);
     await onComplete(timedOutJob, undefined);
-    logCodexJobFinished(context, timedOutJob, undefined);
+    logClaudeJobFinished(context, timedOutJob, undefined);
     return;
   }
 
@@ -270,18 +248,16 @@ async function monitorCodexProcess(
       finishedAt: new Date().toISOString(),
       exitCode: processResult.exitCode,
       signal: processResult.signal,
-      error: stderr.trim() || `Codex CLI exited with code ${processResult.exitCode}`
+      error: stderr.trim() || `Claude CLI exited with code ${processResult.exitCode}`
     };
     await writeJobMetadata(failedJob);
     await onComplete(failedJob, undefined);
-    logCodexJobFinished(context, failedJob, undefined);
+    logClaudeJobFinished(context, failedJob, undefined);
     return;
   }
 
-  const finalMessage = await readOptionalFile(job.transcriptPath);
-  const parsedWorkerResult =
-    parseWorkerResult(finalMessage ?? "", context.jobId) ??
-    parseWorkerResult(stdout, context.jobId);
+  await writeFile(job.transcriptPath, stdout);
+  const parsedWorkerResult = parseWorkerResult(stdout, context.jobId);
   if (!parsedWorkerResult) {
     const failedJob: AgentJob = {
       ...job,
@@ -289,11 +265,11 @@ async function monitorCodexProcess(
       finishedAt: new Date().toISOString(),
       exitCode: processResult.exitCode,
       signal: processResult.signal,
-      error: "Codex CLI completed without a valid worker completion envelope"
+      error: "Claude CLI completed without a valid worker completion envelope"
     };
     await writeJobMetadata(failedJob);
     await onComplete(failedJob, undefined);
-    logCodexJobFinished(context, failedJob, undefined);
+    logClaudeJobFinished(context, failedJob, undefined);
     return;
   }
 
@@ -309,7 +285,7 @@ async function monitorCodexProcess(
   await writeAgentResult(job.resultPath, workerResult);
   await writeJobMetadata(finishedJob);
   await onComplete(finishedJob, workerResult);
-  logCodexJobFinished(context, finishedJob, workerResult);
+  logClaudeJobFinished(context, finishedJob, workerResult);
 }
 
 async function waitForSpawn(child: ReturnType<typeof spawn>): Promise<void> {
@@ -331,7 +307,7 @@ async function waitForSpawn(child: ReturnType<typeof spawn>): Promise<void> {
 async function waitForProcess(
   child: ReturnType<typeof spawn>,
   timeoutMs: number
-): Promise<CodexProcessResult> {
+): Promise<ClaudeProcessResult> {
   let timedOut = false;
   const timeout = setTimeout(() => {
     timedOut = true;
@@ -339,7 +315,7 @@ async function waitForProcess(
   }, timeoutMs);
 
   try {
-    return await new Promise<CodexProcessResult>((resolve) => {
+    return await new Promise<ClaudeProcessResult>((resolve) => {
       child.once("error", (error) => {
         resolve({
           exitCode: null,
@@ -359,14 +335,6 @@ async function waitForProcess(
   }
 }
 
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch {
-    return undefined;
-  }
-}
-
 async function writeJobMetadata(job: AgentJob): Promise<void> {
   await writeJsonFileAtomic(job.metadataPath, job);
 }
@@ -375,17 +343,17 @@ async function writeAgentResult(resultPath: string, result: WorkerResult): Promi
   await writeJsonFileAtomic(resultPath, result);
 }
 
-function logCodexJobStarting(config: AppConfig, context: WebhookContext, args: string[]): void {
+function logClaudeJobStarting(config: AppConfig, context: WebhookContext, args: string[]): void {
   console.log(
-    "Starting Codex CLI agent process:",
+    "Starting Claude CLI agent process:",
     JSON.stringify(
       {
         receivedAt: new Date().toISOString(),
         ...webhookContextSummary(context),
         selectedAgent: context.agentSelection,
-        command: config.agents.codex.command,
+        command: config.agents.claude.command,
         args,
-        timeoutMs: config.agents.codex.execTimeoutMs,
+        timeoutMs: config.agents.claude.execTimeoutMs,
         dryRun: config.core.dryRun
       },
       null,
@@ -394,9 +362,9 @@ function logCodexJobStarting(config: AppConfig, context: WebhookContext, args: s
   );
 }
 
-function logCodexJobStarted(context: WebhookContext, job: AgentJob): void {
+function logClaudeJobStarted(context: WebhookContext, job: AgentJob): void {
   console.log(
-    "Codex CLI agent process started:",
+    "Claude CLI agent process started:",
     JSON.stringify(
       {
         receivedAt: new Date().toISOString(),
@@ -416,13 +384,13 @@ function logCodexJobStarted(context: WebhookContext, job: AgentJob): void {
   );
 }
 
-function logCodexJobFinished(
+function logClaudeJobFinished(
   context: WebhookContext,
   job: AgentJob,
   result: WorkerResult | undefined
 ): void {
   console.log(
-    "Codex CLI agent process finished:",
+    "Claude CLI agent process finished:",
     JSON.stringify(
       {
         receivedAt: new Date().toISOString(),

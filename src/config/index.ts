@@ -13,31 +13,17 @@ export type {
   GitHubIntegrationConfig,
   GitHubReactionContent,
   IntegrationConfig,
-  SupersetAgentRunnerConfig
+  ClaudeAgentRunnerConfig
 } from "./types.ts";
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const agentRunner = readString(env.AGENT_RUNNER, "superset").toLowerCase();
-  const supersetDefaultAgent = readString(
-    env.SUPERSET_DEFAULT_AGENT ?? env.SUPERSET_DEFAULT_AGENT_MODEL,
-    "codex"
-  );
   const codexDefaultModel = readString(
     env.CODEX_DEFAULT_MODEL ?? env.CODEX_MODEL,
     "gpt-5.5"
   );
-  const defaultAgent = readString(
-    env.AGENT_DEFAULT,
-    agentRunner === "codex" ? codexDefaultModel : supersetDefaultAgent
-  );
-  const supersetAgentTags = readStringList(
-    env.SUPERSET_AGENT_TAGS ?? env.SUPERSET_AGENT_MODEL_TAGS,
-    "codex,claude"
-  );
-  const agentTags = readStringList(
-    env.AGENT_TAGS,
-    agentRunner === "codex" ? codexDefaultModel : supersetAgentTags.join(",")
-  );
+  const defaultAgent = readCliName(env.AGENT_DEFAULT, "AGENT_DEFAULT", "codex");
+  const agentTags = readStringList(env.AGENT_TAGS, "codex,claude")
+    .map((tag) => readCliName(tag, "AGENT_TAGS", "codex"));
 
   return {
     core: {
@@ -50,34 +36,22 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       promptPrefix: readOptionalString(env.AGENT_PROMPT_PREFIX)
     },
     agents: {
-      runner: agentRunner,
       selection: {
         triggerTag: readString(env.AGENT_TRIGGER_TAG, "agent"),
         defaultAgent,
         tags: agentTags
       },
-      superset: {
-        command: readString(env.SUPERSET_COMMAND, "superset"),
-        workspaceId: readOptionalString(env.SUPERSET_WORKSPACE_ID),
-        hostId: readOptionalString(env.SUPERSET_HOST_ID),
-        defaultAgent: supersetDefaultAgent,
-        tags: supersetAgentTags,
-        extraArgs: readStringArray(env.SUPERSET_EXTRA_ARGS_JSON, "SUPERSET_EXTRA_ARGS_JSON"),
+      claude: {
+        command: readString(env.CLAUDE_COMMAND, "claude"),
+        model: readOptionalString(env.CLAUDE_MODEL),
+        extraArgs: readStringArray(env.CLAUDE_EXTRA_ARGS_JSON, "CLAUDE_EXTRA_ARGS_JSON"),
         envPassthrough: readStringArray(
-          env.SUPERSET_ENV_PASSTHROUGH_JSON,
-          "SUPERSET_ENV_PASSTHROUGH_JSON",
-          ["SUPERSET_API_KEY", "SUPERSET_API_URL"]
+          env.CLAUDE_ENV_PASSTHROUGH_JSON,
+          "CLAUDE_ENV_PASSTHROUGH_JSON",
+          ["ANTHROPIC_API_KEY", "CLAUDE_CONFIG_DIR"]
         ),
-        terminalPollIntervalMs: readPositiveInt(
-          env.SUPERSET_TERMINAL_POLL_INTERVAL_MS,
-          10_000,
-          "SUPERSET_TERMINAL_POLL_INTERVAL_MS"
-        ),
-        terminalMaxPolls: readPositiveInt(
-          env.SUPERSET_TERMINAL_MAX_POLLS,
-          360,
-          "SUPERSET_TERMINAL_MAX_POLLS"
-        )
+        workingDirectory: readOptionalString(env.CLAUDE_WORKING_DIRECTORY),
+        execTimeoutMs: readPositiveInt(env.CLAUDE_EXEC_TIMEOUT_MS, 3_600_000, "CLAUDE_EXEC_TIMEOUT_MS")
       },
       codex: {
         command: readString(env.CODEX_COMMAND, "codex"),
@@ -86,7 +60,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         envPassthrough: readStringArray(
           env.CODEX_ENV_PASSTHROUGH_JSON,
           "CODEX_ENV_PASSTHROUGH_JSON",
-          ["OPENAI_API_KEY", "CODEX_HOME"]
+          ["CODEX_HOME"]
         ),
         sandbox: readOptionalEnum(
           env.CODEX_SANDBOX,
@@ -130,6 +104,14 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       }
     }
   };
+}
+
+function readCliName(value: string | undefined, name: string, fallback: string): string {
+  const nameValue = readString(value, fallback).toLowerCase();
+  if (nameValue !== "codex" && nameValue !== "claude") {
+    throw new Error(`${name} must be codex or claude`);
+  }
+  return nameValue;
 }
 
 function readOptionalEnum<TAllowed extends readonly string[]>(

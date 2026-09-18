@@ -5,60 +5,37 @@ import path from "node:path";
 import test from "node:test";
 import { readConfig } from "../src/config/index.ts";
 import {
-  buildCodexEnv,
-  buildCodexExecArgs,
-  startCodexAgentJob
-} from "../src/agents/codex/index.ts";
+  buildClaudeEnv,
+  buildClaudeExecArgs,
+  startClaudeAgentJob
+} from "../src/agents/claude/index.ts";
 import type { WebhookContext } from "../src/core/prompt.ts";
 
-test("buildCodexExecArgs runs Codex non-interactively with selected model", () => {
-  const args = buildCodexExecArgs(
-    readConfig({
-      CODEX_SANDBOX: "workspace-write",
-      CODEX_APPROVAL_POLICY: "never",
-      CODEX_WORKING_DIRECTORY: "/tmp/project",
-      CODEX_EXTRA_ARGS_JSON: "[\"--search\"]"
-    }),
-    "gpt-5.5",
-    "/tmp/job/codex-last-message.md"
-  );
-
-  assert.deepEqual(args, [
-    "exec",
-    "--model",
-    "gpt-5.5",
-    "--cd",
-    "/tmp/project",
-    "--sandbox",
-    "workspace-write",
-    "--ask-for-approval",
-    "never",
-    "--output-last-message",
-    "/tmp/job/codex-last-message.md",
-    "--color",
-    "never",
-    "--search",
-    "-"
-  ]);
+test("buildClaudeExecArgs runs Claude non-interactively", () => {
+  const args = buildClaudeExecArgs(readConfig({
+    CLAUDE_MODEL: "sonnet",
+    CLAUDE_EXTRA_ARGS_JSON: '["--permission-mode","acceptEdits"]'
+  }));
+  assert.deepEqual(args, ["--print", "--output-format", "text", "--model", "sonnet", "--permission-mode", "acceptEdits", "Follow the task instructions on stdin."]);
 });
 
-test("startCodexAgentJob launches codex exec and records the completed result", async () => {
-  const tempDir = await mkdtemp(path.join(tmpdir(), "codex-job-"));
-  const fakeCodexPath = path.join(tempDir, "fake-codex.mjs");
+test("startClaudeAgentJob launches claude exec and records the completed result", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "claude-job-"));
+  const fakeClaudePath = path.join(tempDir, "fake-claude.mjs");
   const argsPath = path.join(tempDir, "args.jsonl");
   const workerOutputPath = path.join(tempDir, "job", "agent-output.md");
-  const publicAgentOutput = "Codex finished the requested work.";
+  const publicAgentOutput = "Claude finished the requested work.";
   const finalMessage = `${publicAgentOutput}
 AGENT_WORKER_DONE
 task: job-1
-summary: codex agent result
+summary: claude agent result
 files: none
 checks: fake check passed
 handoff: none
 `;
 
   await writeFile(
-    fakeCodexPath,
+    fakeClaudePath,
     `#!/usr/bin/env node
 import { appendFileSync, writeFileSync } from "node:fs";
 
@@ -77,24 +54,22 @@ process.stdin.on("end", () => {
     return;
   }
 
-  const outputIndex = args.indexOf("--output-last-message");
-  writeFileSync(args[outputIndex + 1], ${JSON.stringify(finalMessage)});
+
   writeFileSync(${JSON.stringify(workerOutputPath)}, ${JSON.stringify(publicAgentOutput)});
-  process.stdout.write("codex stdout", () => {
+  process.stdout.write(${JSON.stringify(finalMessage)}, () => {
     process.exit(0);
   });
 });
 `
   );
-  await chmod(fakeCodexPath, 0o755);
+  await chmod(fakeClaudePath, 0o755);
 
   const config = readConfig({
-    AGENT_DEFAULT: "codex",
-    AGENT_TAGS: "codex",
-    CODEX_COMMAND: fakeCodexPath,
-    CODEX_SANDBOX: "workspace-write",
-    CODEX_APPROVAL_POLICY: "never",
-    CODEX_EXEC_TIMEOUT_MS: "5000",
+    AGENT_DEFAULT: "claude",
+    AGENT_TAGS: "claude",
+    CLAUDE_COMMAND: fakeClaudePath,
+    CLAUDE_MODEL: "sonnet",
+    CLAUDE_EXEC_TIMEOUT_MS: "5000",
     WEBHOOK_EVENT_DIR: tempDir
   });
   const context = buildWebhookContext(tempDir);
@@ -105,7 +80,7 @@ process.stdin.on("end", () => {
   };
 
   try {
-    const job = await startCodexAgentJob(config, context, "test prompt should not be logged");
+    const job = await startClaudeAgentJob(config, context, "test prompt should not be logged");
     await waitFor(async () => {
       const metadata = JSON.parse(await readFile(job.metadataPath, "utf8")) as { status: string };
       return metadata.status === "completed";
@@ -126,37 +101,36 @@ process.stdin.on("end", () => {
     const args = await readFile(argsPath, "utf8");
 
     assert.equal(metadata.status, "completed");
-    assert.equal(metadata.agent, "codex");
-    assert.equal(metadata.runnerId, "codex");
+    assert.equal(metadata.agent, "claude");
+    assert.equal(metadata.runnerId, "claude");
     assert.equal(metadata.stdoutPath, job.stdoutPath);
     assert.equal(metadata.transcriptPath, job.transcriptPath);
-    assert.equal(result.summary, "codex agent result");
+    assert.equal(result.summary, "claude agent result");
     assert.equal(result.checks, "fake check passed");
     assert.equal(savedAgentOutput, publicAgentOutput);
-    assert.match(args, /"exec","--model","gpt-5.5"/);
-    assert.match(args, /"--output-last-message"/);
-    assert.match(args, /"workspace-write"/);
+    assert.match(args, /"--print","--output-format","text","--model","sonnet"/);
+
     assert.doesNotMatch(logs.join("\n"), /test prompt should not be logged/);
   } finally {
     console.log = originalLog;
   }
 });
 
-test("buildCodexEnv passes only the configured minimal environment", () => {
+test("buildClaudeEnv passes only the configured minimal environment", () => {
   assert.deepEqual(
-    buildCodexEnv(
-      readConfig({ CODEX_ENV_PASSTHROUGH_JSON: "[\"OPENAI_API_KEY\"]" }).agents.codex,
+    buildClaudeEnv(
+      readConfig({ CLAUDE_ENV_PASSTHROUGH_JSON: "[\"ANTHROPIC_API_KEY\"]" }).agents.claude,
       {
         HOME: "/home/test",
         PATH: "/bin",
-        OPENAI_API_KEY: "key",
+        ANTHROPIC_API_KEY: "key",
         SECRET: "do-not-pass"
       }
     ),
     {
       HOME: "/home/test",
       PATH: "/bin",
-      OPENAI_API_KEY: "key"
+      ANTHROPIC_API_KEY: "key"
     }
   );
 });
@@ -167,8 +141,8 @@ function buildWebhookContext(tempDir: string): WebhookContext {
   return {
     integrationId: "github",
     integrationName: "GitHub",
-    agentRunnerId: "codex",
-    agentRunnerName: "Codex CLI",
+    agentRunnerId: "claude",
+    agentRunnerName: "Claude CLI",
     receivedAt: "2026-08-28T00:00:00.000Z",
     eventName: "issues",
     deliveryId: "delivery-2",
@@ -181,7 +155,7 @@ function buildWebhookContext(tempDir: string): WebhookContext {
     promptPath: path.join(jobDir, "prompt.md"),
     agentOutputPath: path.join(jobDir, "agent-output.md"),
     agentSelection: {
-      agent: "codex",
+      agent: "claude",
       tag: "agent",
       source: "text",
       usesDefaultAgent: true

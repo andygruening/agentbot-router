@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import type { AgentSelection } from "./agent-selection.ts";
 import type { WebhookContext } from "./webhook-context.ts";
@@ -85,6 +86,30 @@ export async function persistWebhook(
   );
 
   return context;
+}
+
+export async function claimWebhookDelivery(
+  config: AppConfig,
+  integration: WebhookIntegration,
+  event: IntegrationEvent
+): Promise<string | undefined> {
+  const claimsDir = path.join(config.core.eventDir, ".deliveries");
+  await mkdir(claimsDir, { recursive: true });
+  const key = [integration.id, event.metadata.repositoryFullName ?? "", event.deliveryId].join(":");
+  const claimPath = path.join(claimsDir, createHash("sha256").update(key).digest("hex"));
+  try {
+    await mkdir(claimPath);
+    return claimPath;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+export async function releaseWebhookDelivery(claimPath: string): Promise<void> {
+  await rm(claimPath, { recursive: true, force: true });
 }
 
 function emptyIntegrationPrompt(): IntegrationPromptSection {

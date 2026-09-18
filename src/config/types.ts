@@ -24,16 +24,13 @@ export type AgentSelectionConfig = {
   tags: string[];
 };
 
-export type SupersetAgentRunnerConfig = {
+export type ClaudeAgentRunnerConfig = {
   command: string;
-  workspaceId?: string;
-  hostId?: string;
-  defaultAgent: string;
-  tags: string[];
+  model?: string;
   extraArgs: string[];
   envPassthrough: string[];
-  terminalPollIntervalMs: number;
-  terminalMaxPolls: number;
+  workingDirectory?: string;
+  execTimeoutMs: number;
 };
 
 export type CodexAgentRunnerConfig = {
@@ -48,9 +45,8 @@ export type CodexAgentRunnerConfig = {
 };
 
 export type AgentConfig = {
-  runner: string;
   selection: AgentSelectionConfig;
-  superset: SupersetAgentRunnerConfig;
+  claude: ClaudeAgentRunnerConfig;
   codex: CodexAgentRunnerConfig;
 };
 

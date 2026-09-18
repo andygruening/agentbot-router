@@ -10,7 +10,7 @@ export function buildAgentPrompt(config: AppConfig, context: WebhookContext): st
     : "";
   const publicResponseName = context.integrationPrompt.publicResponseName ?? "response";
 
-  return `${prefix}You are a new Superset terminal agent session launched by a local ${context.integrationName} webhook receiver.
+  return `${prefix}You are an agent launched by a ${context.integrationName} webhook receiver.
 
 Webhook metadata:
 - Integration: ${context.integrationName}
@@ -38,7 +38,7 @@ ${context.integrationPrompt.responseInstructions} Before your final response, wr
 End your final response with exactly one of these envelopes:
 
 \`\`\`text
-SUPERSET_WORKER_DONE
+AGENT_WORKER_DONE
 task: ${context.jobId}
 summary: <one-line outcome>
 files: <comma-separated paths or none>
@@ -47,7 +47,7 @@ handoff: <next-step context or none>
 \`\`\`
 
 \`\`\`text
-SUPERSET_WORKER_BLOCKED
+AGENT_WORKER_BLOCKED
 task: ${context.jobId}
 reason: <specific blocker>
 needs: <decision, access, or dependency required>

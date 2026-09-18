@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import path from "node:path";
 import {
   AmbiguousAgentTagError,
   type AgentSelection
@@ -9,7 +10,7 @@ import {
   sendJson,
   summarizeHeaders
 } from "./http.ts";
-import { persistWebhook } from "./jobs.ts";
+import { claimWebhookDelivery, persistWebhook, releaseWebhookDelivery } from "./jobs.ts";
 import {
   AgentRunnerConfigError,
   findAgentRunner,
@@ -26,6 +27,7 @@ import {
 } from "../integrations/types.ts";
 import { buildAgentPrompt } from "./prompt.ts";
 import type { WebhookContext } from "./webhook-context.ts";
+import { writeJsonFileAtomic } from "../agents/shared/json-files.ts";
 
 export type AgentLauncher = (
   config: AppConfig,
@@ -121,7 +123,7 @@ async function handleRequest(
       ok: true,
       webhookPath: config.integrations.github.webhookPath,
       integrations: integrationPaths(config),
-      agentRunner: config.agents.runner,
+      defaultAgent: config.agents.selection.defaultAgent,
       dryRun: config.core.dryRun
     });
     return;
@@ -185,18 +187,78 @@ async function handleRequest(
     return;
   }
 
-  const agentRunner = findAgentRunner(config);
-  const context = await persistWebhook(
-    config,
-    integration,
-    event,
-    rawBody,
-    agentSelection,
-    agentRunner.id,
-    agentRunner.displayName
-  );
+  const agentRunner = findAgentRunner(config, agentSelection.agent);
+  const claimPath = await claimWebhookDelivery(config, integration, event);
+  if (!claimPath) {
+    sendJson(response, 202, {
+      ok: true,
+      ignored: true,
+      event: event.eventName,
+      deliveryId: event.deliveryId,
+      reason: "duplicate_delivery"
+    });
+    return;
+  }
+
+  let context: WebhookContext;
+  try {
+    context = await persistWebhook(
+      config,
+      integration,
+      event,
+      rawBody,
+      agentSelection,
+      agentRunner.id,
+      agentRunner.displayName
+    );
+  } catch (error) {
+    await releaseWebhookDelivery(claimPath);
+    throw error;
+  }
   logWebhookPersisted(context);
 
+  sendJson(response, 202, {
+    ok: true,
+    integration: { id: integration.id, name: integration.displayName },
+    agentRunner: { id: agentRunner.id, name: agentRunner.displayName },
+    event: event.eventName,
+    deliveryId: context.deliveryId,
+    jobId: context.jobId,
+    jobDir: context.jobDir,
+    status: "accepted",
+    agent: agentSelection.agent
+  });
+  void processAcceptedDelivery(config, launchAgent, integration, event, target, context).catch(
+    async (error: unknown) => {
+      const failure = {
+        at: new Date().toISOString(),
+        jobId: context.jobId,
+        error: serializeError(error)
+      };
+      try {
+        await writeJsonFileAtomic(path.join(context.jobDir, "processing-error.json"), failure);
+      } catch (writeError) {
+        console.error("Failed to save webhook processing error:", serializeError(writeError));
+      }
+      console.error(
+        "Accepted webhook processing failed:",
+        JSON.stringify({
+          ...failure,
+          jobDir: context.jobDir
+        })
+      );
+    }
+  );
+}
+
+async function processAcceptedDelivery(
+  config: AppConfig,
+  launchAgent: AgentLauncher,
+  integration: WebhookIntegration,
+  event: IntegrationEvent,
+  target: NonNullable<ReturnType<WebhookIntegration["resolveTarget"]>>,
+  context: WebhookContext
+): Promise<void> {
   const preparedRun = await integration.prepareRun(config, context, event, target);
   const contextWithPrompt: WebhookContext = {
     ...context,
@@ -211,40 +273,6 @@ async function handleRequest(
     }
   });
   logAgentLaunchAccepted(contextWithPrompt, job);
-
-  const body: Record<string, unknown> = {
-    ok: true,
-    integration: {
-      id: integration.id,
-      name: integration.displayName
-    },
-    agentRunner: {
-      id: agentRunner.id,
-      name: agentRunner.displayName,
-      command: job.command,
-      args: job.args,
-      stdoutPath: job.stdoutPath,
-      stderrPath: job.stderrPath,
-      transcriptPath: job.transcriptPath,
-      agentOutputPath: job.agentOutputPath,
-      resultPath: job.resultPath,
-      metadataPath: job.metadataPath
-    },
-    event: event.eventName,
-    deliveryId: contextWithPrompt.deliveryId,
-    jobId: contextWithPrompt.jobId,
-    status: job.status,
-    agent: job.agent,
-    sessionId: job.sessionId,
-    jobDir: contextWithPrompt.jobDir,
-    superset: supersetResponse(job)
-  };
-  const integrationResponse = integration.acceptedResponse(activeRun);
-  if (integrationResponse) {
-    body[integration.id] = integrationResponse;
-  }
-
-  sendJson(response, 202, body);
 }
 
 function logIncomingWebhook(
@@ -399,23 +427,6 @@ function webhookRequestSummary(
     payloadKeys: topLevelKeys(event.payload),
     remoteAddress: request.socket.remoteAddress,
     headers: summarizeHeaders(request)
-  };
-}
-
-function supersetResponse(job: AgentJob): Record<string, unknown> | undefined {
-  if (job.runnerId !== "superset") {
-    return undefined;
-  }
-
-  return {
-    command: job.command,
-    args: job.args,
-    createStdoutPath: job.createStdoutPath ?? job.stdoutPath,
-    createStderrPath: job.createStderrPath ?? job.stderrPath,
-    terminalSnapshotPath: job.terminalSnapshotPath ?? job.transcriptPath,
-    agentOutputPath: job.agentOutputPath,
-    resultPath: job.resultPath,
-    metadataPath: job.metadataPath
   };
 }
 

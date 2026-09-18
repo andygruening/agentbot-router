@@ -6,14 +6,14 @@ import {
 } from "../src/integrations/github/agent-tags.ts";
 import { readConfig } from "../src/config/index.ts";
 
-test("$agent selects the configured default Superset agent", () => {
+test("$agent selects the configured default CLI", () => {
   const selection = selectAgentFromPayload(
     {
       comment: { body: "$agent please investigate" }
     },
     readConfig({
-      SUPERSET_DEFAULT_AGENT: "codex",
-      SUPERSET_AGENT_TAGS: "codex,claude"
+      AGENT_DEFAULT: "codex",
+      AGENT_TAGS: "codex,claude"
     }).agents.selection
   );
 
@@ -25,14 +25,14 @@ test("$agent selects the configured default Superset agent", () => {
   });
 });
 
-test("direct configured tags select that Superset agent", () => {
+test("direct configured tags select that CLI", () => {
   const selection = selectAgentFromPayload(
     {
       comment: { body: "$agent $claude please investigate" }
     },
     readConfig({
-      SUPERSET_DEFAULT_AGENT: "codex",
-      SUPERSET_AGENT_TAGS: "codex,claude"
+      AGENT_DEFAULT: "codex",
+      AGENT_TAGS: "codex,claude"
     }).agents.selection
   );
 
@@ -50,8 +50,8 @@ test("issue_comment tags are read only from the new comment", () => {
       }
     },
     readConfig({
-      SUPERSET_DEFAULT_AGENT: "codex",
-      SUPERSET_AGENT_TAGS: "codex,claude"
+      AGENT_DEFAULT: "codex",
+      AGENT_TAGS: "codex,claude"
     }).agents.selection,
     "issue_comment"
   );
@@ -69,8 +69,8 @@ test("issue_comment direct tag is not made ambiguous by tags on the issue", () =
       }
     },
     readConfig({
-      SUPERSET_DEFAULT_AGENT: "codex",
-      SUPERSET_AGENT_TAGS: "codex,claude"
+      AGENT_DEFAULT: "codex",
+      AGENT_TAGS: "codex,claude"
     }).agents.selection,
     "issue_comment"
   );
@@ -81,8 +81,8 @@ test("issue_comment direct tag is not made ambiguous by tags on the issue", () =
 
 test("labels can select the default or a direct agent", () => {
   const config = readConfig({
-    SUPERSET_DEFAULT_AGENT: "codex",
-    SUPERSET_AGENT_TAGS: "codex,claude"
+    AGENT_DEFAULT: "codex",
+    AGENT_TAGS: "codex,claude"
   }).agents.selection;
 
   assert.equal(
@@ -103,8 +103,8 @@ test("multiple direct agent tags are rejected as ambiguous", () => {
           comment: { body: "$codex $claude" }
         },
         readConfig({
-          SUPERSET_DEFAULT_AGENT: "codex",
-          SUPERSET_AGENT_TAGS: "codex,claude"
+          AGENT_DEFAULT: "codex",
+          AGENT_TAGS: "codex,claude"
         }).agents.selection
       ),
     AmbiguousAgentTagError
@@ -117,8 +117,8 @@ test("agent-prefixed text tags do not bypass the configured allow-list", () => {
       comment: { body: "$agent:gpt-5.4" }
     },
     readConfig({
-      SUPERSET_DEFAULT_AGENT: "codex",
-      SUPERSET_AGENT_TAGS: "codex,claude"
+      AGENT_DEFAULT: "codex",
+      AGENT_TAGS: "codex,claude"
     }).agents.selection
   );
 

@@ -1,19 +1,19 @@
 import type { AppConfig } from "../config/index.ts";
 import { codexAgentRunner } from "./codex/index.ts";
-import { supersetAgentRunner } from "./superset/index.ts";
+import { claudeAgentRunner } from "./claude/index.ts";
 import type { AgentJob, AgentRunner, StartAgentJobOptions } from "./types.ts";
 import type { WebhookContext } from "../core/webhook-context.ts";
 
 const agentRunners: readonly AgentRunner[] = [
-  supersetAgentRunner,
-  codexAgentRunner
+  codexAgentRunner,
+  claudeAgentRunner
 ];
 
-export function findAgentRunner(config: AppConfig): AgentRunner {
-  const runner = agentRunners.find((candidate) => candidate.id === config.agents.runner);
+export function findAgentRunner(config: AppConfig, agent: string = config.agents.selection.defaultAgent): AgentRunner {
+  const runner = agentRunners.find((candidate) => candidate.id === agent);
   if (!runner) {
     throw new AgentRunnerConfigError(
-      `AGENT_RUNNER must be one of ${agentRunners.map((candidate) => candidate.id).join(", ")}`
+      `Agent runner must be one of ${agentRunners.map((candidate) => candidate.id).join(", ")}`
     );
   }
 
@@ -30,7 +30,7 @@ export async function startConfiguredAgentJob(
   prompt: string,
   options?: StartAgentJobOptions
 ): Promise<AgentJob> {
-  return await findAgentRunner(config).start(config, context, prompt, options);
+  return await findAgentRunner(config, context.agentSelection.agent).start(config, context, prompt, options);
 }
 
 export class AgentRunnerConfigError extends Error {}
