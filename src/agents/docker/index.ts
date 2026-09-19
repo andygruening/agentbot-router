@@ -58,10 +58,11 @@ export async function startDockerAgentJob(config: AppConfig, context: WebhookCon
   const child = spawn(config.agents.docker.command, args, { env: dockerHostEnv(hostEnv), stdio: ["ignore", "pipe", "pipe"] });
   const stdout: Buffer[] = [], stderr: Buffer[] = [];
   child.stdout?.on("data", (chunk: Buffer) => stdout.push(chunk)); child.stderr?.on("data", (chunk: Buffer) => stderr.push(chunk));
+  const processDone = waitForProcess(child, config.agents.docker.execTimeoutMs);
   await waitForSpawn(child);
   const running = { ...base, sessionId: String(child.pid) };
   await writeJsonFileAtomic(metadataPath, running);
-  void monitor(child, config, context, running, stdout, stderr, onComplete);
+  void monitor(processDone, context, running, stdout, stderr, onComplete);
   return running;
 }
 
@@ -71,8 +72,8 @@ function dockerHostEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
     if (env[key] !== undefined) result[key] = env[key];
   return result;
 }
-async function monitor(child: ReturnType<typeof spawn>, config: AppConfig, context: WebhookContext, job: AgentJob, out: Buffer[], err: Buffer[], onComplete: NonNullable<StartAgentJobOptions["onComplete"]>): Promise<void> {
-  const processResult = await waitForProcess(child, config.agents.docker.execTimeoutMs);
+async function monitor(processDone: Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }>, context: WebhookContext, job: AgentJob, out: Buffer[], err: Buffer[], onComplete: NonNullable<StartAgentJobOptions["onComplete"]>): Promise<void> {
+  const processResult = await processDone;
   const stdout = Buffer.concat(out).toString("utf8"), stderr = Buffer.concat(err).toString("utf8");
   await Promise.all([writeFile(job.stdoutPath, stdout), writeFile(job.stderrPath, stderr), writeFile(job.transcriptPath, stdout)]);
   const finishedAt = new Date().toISOString();
