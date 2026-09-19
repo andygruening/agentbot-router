@@ -4,8 +4,7 @@ A Node.js TypeScript webhook receiver that saves accepted deliveries, gathers Gi
 
 ## Setup
 
-- [Local deployment](docs/LOCAL_DEPLOYMENT.md)
-- [Remote deployment over SSH](docs/REMOTE_DEPLOYMENT.md)
+- [Deployment](DEPLOYMENT.md)
 
 ## Agent selection
 
