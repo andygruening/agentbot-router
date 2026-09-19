@@ -30,13 +30,12 @@ cloudflared version
 
 ## Quickstart
 
-Install pnpm and GitHub CLI, authenticate GitHub CLI, and clone this public repository:
+Install pnpm and GitHub CLI, then clone this public repository:
 
 ```bash
-npm install --global pnpm@11.20.0
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.20.0 sh -
 sudo apt update
 sudo apt install gh
-gh auth login --with-token
 git clone https://github.com/andygruening/local-agent-bot.git
 cd local-agent-bot
 ```
@@ -47,7 +46,7 @@ Then run the interactive setup:
 pnpm setup
 ```
 
-GitHub CLI reads the token from standard input. The quickstart checks local requirements, installs dependencies, builds the application, creates or updates a private `.env`, securely collects the runtime GitHub token, generates a webhook secret, and authenticates Codex, Claude, or both. You may skip either agent, but setup requires at least one. Codex and Claude use subscription device or browser login; the script does not request LLM API keys.
+The quickstart checks local requirements, installs dependencies, builds the application, creates or updates a private `.env`, securely collects the runtime GitHub token, generates a webhook secret, and authenticates Codex, Claude, or both. You may skip either agent, but setup requires at least one. Codex and Claude use subscription device or browser login; the script does not request LLM API keys.
 
 The quickstart ends with the local start command and the remaining Cloudflare Tunnel and GitHub App steps. Use the sections below when setting up those services or when you prefer manual setup.
 

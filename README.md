@@ -4,13 +4,12 @@ A Node.js TypeScript webhook receiver that saves accepted deliveries, gathers Gi
 
 ## Setup
 
-Install the pinned pnpm version and GitHub CLI, authenticate GitHub CLI with a token, then clone this public repository:
+Install the pinned pnpm version and GitHub CLI, then clone this public repository:
 
 ```bash
-npm install --global pnpm@11.20.0
+curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.20.0 sh -
 sudo apt update
 sudo apt install gh
-gh auth login --with-token
 git clone https://github.com/andygruening/local-agent-bot.git
 cd local-agent-bot
 ```
@@ -21,7 +20,7 @@ Then run the [quickstart script](scripts/quickstart.sh):
 pnpm setup
 ```
 
-`gh auth login --with-token` reads the token from standard input. The token needs access to clone target repositories, push branches, create pull requests, and post comments and reactions. The quickstart installs and builds the application, configures the receiver, and authenticates at least one agent CLI.
+The quickstart securely collects the GitHub token used to clone target repositories, push branches, create pull requests, and post comments and reactions. It installs and builds the application, configures the receiver, and authenticates at least one agent CLI.
 
 - [Deployment guide](DEPLOYMENT.md): requirements, manual setup, Cloudflare Tunnel, GitHub App configuration, and local or remote deployment.
 
