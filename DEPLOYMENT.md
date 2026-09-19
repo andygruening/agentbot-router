@@ -10,6 +10,13 @@ This guide configures `local-agent-bot` as a webhook receiver, exposes it throug
 - A GitHub token for unattended repository and response operations.
 - A Codex subscription and/or Claude subscription. LLM API keys are not used.
 
+On Ubuntu or Debian, install GitHub CLI with:
+
+```bash
+sudo apt update
+sudo apt install gh
+```
+
 Install `cloudflared` using the [official Cloudflare packages or downloads](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/downloads/). Confirm the required commands are available:
 
 ```bash
