@@ -33,10 +33,12 @@ cloudflared version
 After cloning the repository, run the interactive setup:
 
 ```bash
+npm install --global pnpm@11.20.0
+gh auth login --with-token
 pnpm setup
 ```
 
-It checks local requirements, installs dependencies, builds the application, creates or updates a private `.env`, collects the GitHub token without echoing it, generates a webhook secret, and authenticates Codex, Claude, or both. You may skip either agent, but setup requires at least one. Codex and Claude use subscription device or browser login; the script does not request LLM API keys.
+GitHub CLI reads the token from standard input. The quickstart checks local requirements, installs dependencies, builds the application, creates or updates a private `.env`, imports the authenticated GitHub CLI token, generates a webhook secret, and authenticates Codex, Claude, or both. You may skip either agent, but setup requires at least one. Codex and Claude use subscription device or browser login; the script does not request LLM API keys.
 
 The quickstart ends with the local start command and the remaining Cloudflare Tunnel and GitHub App steps. Use the sections below when setting up those services or when you prefer manual setup.
 

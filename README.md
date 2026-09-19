@@ -4,7 +4,16 @@ A Node.js TypeScript webhook receiver that saves accepted deliveries, gathers Gi
 
 ## Setup
 
-- [Quickstart script](scripts/quickstart.sh): clone the repository, then run `pnpm setup` for an interactive installation and configuration walkthrough.
+Install the pinned pnpm version and authenticate GitHub CLI with a token before running the quickstart:
+
+```bash
+npm install --global pnpm@11.20.0
+gh auth login --with-token
+pnpm setup
+```
+
+`gh auth login --with-token` reads the token from standard input. The token needs access to clone the configured repositories, push branches, create pull requests, and post comments and reactions. The [quickstart script](scripts/quickstart.sh) installs and builds the application, configures the receiver, and authenticates at least one agent CLI.
+
 - [Deployment guide](DEPLOYMENT.md): requirements, manual setup, Cloudflare Tunnel, GitHub App configuration, and local or remote deployment.
 
 ## Agent selection

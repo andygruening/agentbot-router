@@ -99,13 +99,19 @@ else
   printf '%s\n' 'Kept the existing GITHUB_WEBHOOK_SECRET.'
 fi
 
-printf '%s' 'GitHub token (input hidden; leave blank to keep the existing value): '
+printf '%s' 'GitHub token (input hidden; leave blank to use .env or the authenticated gh session): '
 read -r -s github_token
 printf '\n'
 if [[ -n "$github_token" ]]; then
   set_env GH_TOKEN "$github_token"
 elif ! grep -qE '^(GH_TOKEN|GITHUB_TOKEN)=.+$' .env && [[ -z "${GH_TOKEN:-}${GITHUB_TOKEN:-}" ]]; then
-  fail 'a GitHub token is required for cloning repositories, pushing changes, creating pull requests, and posting replies.'
+  github_token=$(gh auth token 2>/dev/null || true)
+  if [[ -n "$github_token" ]]; then
+    set_env GH_TOKEN "$github_token"
+    printf '%s\n' 'Saved the authenticated GitHub CLI token in .env for job containers.'
+  else
+    fail 'authenticate first with gh auth login --with-token or enter a GitHub token.'
+  fi
 fi
 
 say '3/5 Agent subscription authentication'
