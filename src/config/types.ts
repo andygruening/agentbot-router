@@ -24,29 +24,23 @@ export type AgentSelectionConfig = {
   tags: string[];
 };
 
-export type ClaudeAgentRunnerConfig = {
+export type DockerAgentRunnerConfig = {
   command: string;
-  model?: string;
-  extraArgs: string[];
-  envPassthrough: string[];
-  workingDirectory?: string;
+  image: string;
+  pull: boolean;
+  codexAuthVolume: string;
+  claudeAuthVolume: string;
   execTimeoutMs: number;
 };
 
 export type CodexAgentRunnerConfig = {
-  command: string;
   defaultModel: string;
-  extraArgs: string[];
-  envPassthrough: string[];
-  sandbox?: "read-only" | "workspace-write" | "danger-full-access";
-  approvalPolicy?: "untrusted" | "on-request" | "never";
-  workingDirectory?: string;
-  execTimeoutMs: number;
 };
 
 export type AgentConfig = {
   selection: AgentSelectionConfig;
-  claude: ClaudeAgentRunnerConfig;
+  docker: DockerAgentRunnerConfig;
+  claude: { model?: string };
   codex: CodexAgentRunnerConfig;
 };
 

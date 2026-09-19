@@ -13,6 +13,8 @@ export type WebhookMetadata = {
   action?: string;
   ref?: string;
   repositoryFullName?: string;
+  cloneRepositoryFullName?: string;
+  branch?: string;
   senderLogin?: string;
 };
 
@@ -43,6 +45,7 @@ export type IntegrationPromptSection = {
 export type PreparedIntegrationRun = {
   event: IntegrationEvent;
   prompt: IntegrationPromptSection;
+  executionMetadata?: Partial<WebhookMetadata>;
 };
 
 export interface WebhookIntegration<

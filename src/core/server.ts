@@ -262,6 +262,10 @@ async function processAcceptedDelivery(
   const preparedRun = await integration.prepareRun(config, context, event, target);
   const contextWithPrompt: WebhookContext = {
     ...context,
+    metadata: {
+      ...context.metadata,
+      ...preparedRun.executionMetadata
+    },
     integrationPrompt: preparedRun.prompt
   };
   const activeRun = await integration.beginResponse(config, contextWithPrompt, preparedRun);

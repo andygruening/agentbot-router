@@ -13,7 +13,7 @@ export type {
   GitHubIntegrationConfig,
   GitHubReactionContent,
   IntegrationConfig,
-  ClaudeAgentRunnerConfig
+  DockerAgentRunnerConfig
 } from "./types.ts";
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -41,43 +41,19 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         defaultAgent,
         tags: agentTags
       },
+      docker: {
+        command: readString(env.DOCKER_COMMAND, "docker"),
+        image: readString(env.AGENT_DOCKER_IMAGE, "local-agent-bot-agent:latest"),
+        pull: readBoolean(env.AGENT_DOCKER_PULL, false),
+        codexAuthVolume: readString(env.CODEX_AUTH_VOLUME, "local-agent-codex-auth"),
+        claudeAuthVolume: readString(env.CLAUDE_AUTH_VOLUME, "local-agent-claude-auth"),
+        execTimeoutMs: readPositiveInt(env.AGENT_EXEC_TIMEOUT_MS, 3_600_000, "AGENT_EXEC_TIMEOUT_MS")
+      },
       claude: {
-        command: readString(env.CLAUDE_COMMAND, "claude"),
-        model: readOptionalString(env.CLAUDE_MODEL),
-        extraArgs: readStringArray(env.CLAUDE_EXTRA_ARGS_JSON, "CLAUDE_EXTRA_ARGS_JSON"),
-        envPassthrough: readStringArray(
-          env.CLAUDE_ENV_PASSTHROUGH_JSON,
-          "CLAUDE_ENV_PASSTHROUGH_JSON",
-          ["ANTHROPIC_API_KEY", "CLAUDE_CONFIG_DIR"]
-        ),
-        workingDirectory: readOptionalString(env.CLAUDE_WORKING_DIRECTORY),
-        execTimeoutMs: readPositiveInt(env.CLAUDE_EXEC_TIMEOUT_MS, 3_600_000, "CLAUDE_EXEC_TIMEOUT_MS")
+        model: readOptionalString(env.CLAUDE_MODEL)
       },
       codex: {
-        command: readString(env.CODEX_COMMAND, "codex"),
-        defaultModel: codexDefaultModel,
-        extraArgs: readStringArray(env.CODEX_EXTRA_ARGS_JSON, "CODEX_EXTRA_ARGS_JSON"),
-        envPassthrough: readStringArray(
-          env.CODEX_ENV_PASSTHROUGH_JSON,
-          "CODEX_ENV_PASSTHROUGH_JSON",
-          ["CODEX_HOME"]
-        ),
-        sandbox: readOptionalEnum(
-          env.CODEX_SANDBOX,
-          "CODEX_SANDBOX",
-          ["read-only", "workspace-write", "danger-full-access"] as const
-        ),
-        approvalPolicy: readOptionalEnum(
-          env.CODEX_APPROVAL_POLICY,
-          "CODEX_APPROVAL_POLICY",
-          ["untrusted", "on-request", "never"] as const
-        ),
-        workingDirectory: readOptionalString(env.CODEX_WORKING_DIRECTORY),
-        execTimeoutMs: readPositiveInt(
-          env.CODEX_EXEC_TIMEOUT_MS,
-          3_600_000,
-          "CODEX_EXEC_TIMEOUT_MS"
-        )
+        defaultModel: codexDefaultModel
       }
     },
     integrations: {
@@ -112,23 +88,6 @@ function readCliName(value: string | undefined, name: string, fallback: string):
     throw new Error(`${name} must be codex or claude`);
   }
   return nameValue;
-}
-
-function readOptionalEnum<TAllowed extends readonly string[]>(
-  value: string | undefined,
-  name: string,
-  allowed: TAllowed
-): TAllowed[number] | undefined {
-  const raw = readOptionalString(value);
-  if (!raw) {
-    return undefined;
-  }
-
-  if (allowed.includes(raw)) {
-    return raw;
-  }
-
-  throw new Error(`${name} must be one of ${allowed.join(", ")}`);
 }
 
 function normalizePath(value: string): string {

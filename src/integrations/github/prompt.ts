@@ -15,9 +15,9 @@ export function buildGitHubPromptSection(
     savedFiles: contextPrompt.savedFiles,
     guidance: `${contextPrompt.guidance}
 
-Code-change delivery rule: if the requested work requires repository code changes, do not leave changes only in the local workspace. Use \`git status\` before and after editing. When the target is a pull request, or the issue/PR context identifies an existing open PR that clearly matches the task, use that PR branch as the work target with \`gh pr checkout <number> --repo <repo>\`, commit your changes, and push to the existing PR branch. If no matching open PR exists, create a new branch, commit your changes, push the branch, and open a pull request with \`gh pr create --repo <repo>\`. Include the PR number or URL in ${context.agentOutputPath} and in the \`handoff\` field. If you cannot push changes or create/update a pull request, finish with \`AGENT_WORKER_BLOCKED\` instead of \`AGENT_WORKER_DONE\`.`,
+Repository delivery rule: the container has already cloned and checked out the correct repository and, when supplied by the webhook, the correct branch. Work only in the current checkout. Do not create branches, worktrees, commits, pushes, pull requests, GitHub comments, or reactions. The container wrapper inspects the checkout after you finish. It pushes actual changes to the supplied branch, or creates a new branch and pull request when no branch was supplied. If you only answer a question and do not modify files, it creates no branch or pull request.`,
     responseInstructions:
-      "The webhook receiver owns GitHub reactions and final result comments. Do not add reactions or post GitHub comments yourself.",
+      "The webhook receiver owns GitHub reactions and final result comments. Write the response file, but do not add reactions or post GitHub comments yourself.",
     publicResponseName: "GitHub response",
     inlineContext: contextPrompt.inlineContext
   };
@@ -58,8 +58,8 @@ function githubIssueContextPrompt(
     `The receiver detected code-change intent from the triggering text: ${githubContext.codeChangeRequested ? "yes" : "no"}.`,
     `Referenced open pull requests: ${openPullRequests || "none"}.`,
     githubContext.codeChangeRequested
-      ? "When the target is a pull request, or the issue/PR context includes an existing open PR that clearly matches this task, use that PR branch as the work target. Prefer `gh pr checkout <number> --repo <repo>` before editing, then commit and push to the checked-out branch. If no referenced open PR clearly matches, create a new branch, commit the smallest appropriate change, push it, and open a pull request with `gh pr create --repo <repo>`."
-      : "Do not checkout, push, or upload source-code changes merely because a PR is referenced. Treat referenced PRs as context unless the triggering text asks you to integrate something or make code changes."
+      ? "Make the requested source changes in the current checkout. The container wrapper owns branch, commit, push, and pull request operations."
+      : "Do not modify source files merely because a PR is referenced. Treat referenced PRs as context unless the triggering text asks for code changes."
   ].join("\n");
   const inlineContext = githubContext.inlineMarkdown
     ? `GitHub issue/PR context digest:\n\n\`\`\`markdown\n${githubContext.inlineMarkdown}\`\`\``

@@ -132,11 +132,15 @@ test("$claude selects the Claude runner for a tagged delivery", async () => {
     GITHUB_CONTEXT_ENABLED: "false",
     GITHUB_RESPONSE_ENABLED: "false"
   });
-  const selected: string[] = [];
+  const selected: Array<{ runner: string; branch?: string; repo?: string }> = [];
   const originalLog = console.log;
   console.log = () => {};
   const server = createWebhookServer(config, async (_config, context) => {
-    selected.push(context.agentRunnerId);
+    selected.push({
+      runner: context.agentRunnerId,
+      branch: context.metadata.branch,
+      repo: context.metadata.cloneRepositoryFullName
+    });
     return {
       jobId: context.jobId,
       status: "running",
@@ -162,6 +166,13 @@ test("$claude selects the Claude runner for a tagged delivery", async () => {
       action: "created",
       comment: { body: "$claude investigate" },
       issue: { number: 123 },
+      pull_request: {
+        number: 123,
+        head: {
+          ref: "feature/fix",
+          repo: { full_name: "octocat/example-fork" }
+        }
+      },
       repository: { full_name: "octo/example" }
     }));
     const signature = `sha256=${createHmac("sha256", "test-secret").update(rawBody).digest("hex")}`;
@@ -178,7 +189,11 @@ test("$claude selects the Claude runner for a tagged delivery", async () => {
     assert.equal(response.status, 202);
     assert.equal(((await response.json()) as { agentRunner: { id: string } }).agentRunner.id, "claude");
     await waitFor(() => selected.length === 1);
-    assert.deepEqual(selected, ["claude"]);
+    assert.deepEqual(selected, [{
+      runner: "claude",
+      branch: "feature/fix",
+      repo: "octocat/example-fork"
+    }]);
   } finally {
     console.log = originalLog;
     await close(server);

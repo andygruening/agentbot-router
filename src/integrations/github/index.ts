@@ -133,6 +133,13 @@ export const githubIntegration: WebhookIntegration<
       event,
       target: target.value,
       githubIssueContext,
+      executionMetadata: githubIssueContext.currentPullRequest
+        ? {
+            cloneRepositoryFullName:
+              githubIssueContext.currentPullRequest.head.repo ?? target.value.repo,
+            branch: githubIssueContext.currentPullRequest.head.ref
+          }
+        : undefined,
       prompt: buildGitHubPromptSection(config, context, githubIssueContext)
     };
   },
@@ -229,13 +236,24 @@ function extractGitHubMetadata(payload: unknown): WebhookMetadata {
 
   const repository = isRecord(payload.repository) ? payload.repository : undefined;
   const sender = isRecord(payload.sender) ? payload.sender : undefined;
+  const pullRequest = isRecord(payload.pull_request) ? payload.pull_request : undefined;
+  const pullRequestHead = isRecord(pullRequest?.head) ? pullRequest.head : undefined;
+  const pullRequestHeadRepo = isRecord(pullRequestHead?.repo) ? pullRequestHead.repo : undefined;
+  const rawRef = readString(payload.ref);
 
   return {
     action: readString(payload.action),
-    ref: readString(payload.ref),
+    ref: rawRef,
+    branch: readString(pullRequestHead?.ref) ?? branchFromRef(rawRef),
     repositoryFullName: readString(repository?.full_name),
+    cloneRepositoryFullName:
+      readString(pullRequestHeadRepo?.full_name) ?? readString(repository?.full_name),
     senderLogin: readString(sender?.login)
   };
+}
+
+function branchFromRef(ref: string | undefined): string | undefined {
+  return ref?.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
