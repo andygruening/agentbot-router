@@ -13,6 +13,7 @@
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "pnpm clean && tsc -p tsconfig.build.json",
     "start": "node --env-file-if-exists=.env dist/src/index.js",
+    "setup": "bash scripts/quickstart.sh",
     "setup:codex": "sh scripts/setup-codex.sh",
     "setup:claude": "sh scripts/setup-claude.sh",
     "typecheck": "tsc -p tsconfig.json --noEmit",

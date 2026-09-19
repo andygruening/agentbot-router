@@ -4,7 +4,8 @@ A Node.js TypeScript webhook receiver that saves accepted deliveries, gathers Gi
 
 ## Setup
 
-- [Deployment](DEPLOYMENT.md)
+- [Quickstart script](scripts/quickstart.sh): clone the repository, then run `pnpm setup` for an interactive installation and configuration walkthrough.
+- [Deployment guide](DEPLOYMENT.md): requirements, manual setup, Cloudflare Tunnel, GitHub App configuration, and local or remote deployment.
 
 ## Agent selection
 
