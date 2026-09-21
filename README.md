@@ -26,9 +26,13 @@ The quickstart securely collects the GitHub token used to clone target repositor
 
 ## Agent selection
 
-A delivery launches an agent only when the new comment, issue or pull request body, or label contains a configured tag. `$agent` selects `AGENT_DEFAULT`; `$codex` and `$claude` select those CLIs directly. Add a model and optional reasoning level with `$codex:gpt-5.6-sol`, `$codex:gpt-5.6-sol:low`, `$claude:fable-5.1`, or `$claude:fable-5.1:low`. Omitting either override uses that CLI's configured default. Codex accepts `minimal`, `low`, `medium`, `high`, and `xhigh`; Claude accepts `low`, `medium`, `high`, `xhigh`, and `max`, subject to support by the selected model.
+A delivery launches an agent only when the new comment, issue or pull request body, or label contains a configured tag. `$agent` asks TypeSafe Jev to select an agent, model, and reasoning level from [jev-choices.json](jev-choices.json). Set `TYPESAFE_API_KEY` in `.env` to enable this routing. Without that key, `$agent` uses `AGENT_DEFAULT` and its configured model.
 
-On `issue_comment` events, only the new comment is scanned. Configure supported direct agents with `AGENT_TAGS`. Conflicting agent or model tags are rejected as ambiguous.
+`$codex` and `$claude` select those CLIs directly. Add a model and optional reasoning level with `$codex:gpt-5.6-sol`, `$codex:gpt-5.6-sol:low`, `$claude:fable-5.1`, or `$claude:fable-5.1:low`. Omitting either override uses that CLI's configured default. Codex accepts `minimal`, `low`, `medium`, `high`, and `xhigh`; Claude accepts `low`, `medium`, `high`, `xhigh`, and `max`, subject to support by the selected model.
+
+Each Jev option has a stable ID, an agent, a model, a reasoning level, and a description of when to use it. Jev receives the triggering user message and these descriptions; its winning choice is used for the job. The choice, confidence, probability distribution, and Jev model are saved in `agent-routing.json` and the job metadata. Routing failures fall back to the configured default. See the [TypeSafe JavaScript SDK documentation](https://docs.typesafe.ai/sdk/javascript) for API details.
+
+On `issue_comment` events, only the new comment is scanned. Configure supported direct agents with `AGENT_TAGS`. Conflicting agent or model tags are rejected as ambiguous. Set `JEV_CHOICES_PATH` to use a different choices file.
 
 Each accepted job writes its webhook payload, GitHub context, prompt, process logs, output, and result under `WEBHOOK_EVENT_DIR`. The agent writes the public reply to `agent-output.md` and ends with an `AGENT_WORKER_DONE` or `AGENT_WORKER_BLOCKED` envelope. The receiver posts the output file through `gh`; the agent must not post its own GitHub response.
 

@@ -23,5 +23,8 @@
   "devDependencies": {
     "@types/node": "^22.13.14",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@typesafe-ai/sdk": "^0.6.0"
   }
 }

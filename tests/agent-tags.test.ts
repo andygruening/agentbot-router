@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   AmbiguousAgentTagError,
+  extractAgentRequestFromGitHubPayload,
   InvalidAgentTagError,
   selectAgentFromGitHubPayload as selectAgentFromPayload
 } from "../src/integrations/github/agent-tags.ts";
@@ -24,6 +25,23 @@ test("$agent selects the configured default CLI", () => {
     source: "text",
     usesDefaultAgent: true
   });
+});
+
+test("$agent request extraction removes the routing tag", () => {
+  const selection = selectAgentFromPayload(
+    { comment: { body: "$agent investigate this failure" } },
+    readConfig({}).agents.selection,
+    "issue_comment"
+  );
+  assert.ok(selection);
+  assert.equal(
+    extractAgentRequestFromGitHubPayload(
+      { comment: { body: "$agent investigate this failure" } },
+      "issue_comment",
+      selection
+    ),
+    "investigate this failure"
+  );
 });
 
 test("direct configured tags select that CLI", () => {

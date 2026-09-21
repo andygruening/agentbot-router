@@ -24,6 +24,11 @@ export type AgentSelectionConfig = {
   tags: string[];
 };
 
+export type JevAgentRouterConfig = {
+  apiKey?: string;
+  choicesPath: string;
+};
+
 export type DockerAgentRunnerConfig = {
   command: string;
   image: string;
@@ -39,6 +44,7 @@ export type CodexAgentRunnerConfig = {
 
 export type AgentConfig = {
   selection: AgentSelectionConfig;
+  jev: JevAgentRouterConfig;
   docker: DockerAgentRunnerConfig;
   claude: { model?: string };
   codex: CodexAgentRunnerConfig;

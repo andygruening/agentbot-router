@@ -2,6 +2,7 @@ import type { AppConfig } from "../../config/index.ts";
 import type { AgentSelection } from "../../core/agent-selection.ts";
 import type { AgentJob, WorkerResult } from "../../agents/types.ts";
 import type { WebhookContext } from "../../core/webhook-context.ts";
+import { routeDefaultAgentWithJev } from "../../agents/jev.ts";
 import {
   type IntegrationEvent,
   IntegrationOperationError,
@@ -26,7 +27,10 @@ import {
   type GitHubResponseState,
   type GitHubResponseTarget
 } from "./response.ts";
-import { selectAgentFromGitHubPayload } from "./agent-tags.ts";
+import {
+  extractAgentRequestFromGitHubPayload,
+  selectAgentFromGitHubPayload
+} from "./agent-tags.ts";
 import {
   deliveryIdFromHeaders,
   eventNameFromHeaders,
@@ -84,6 +88,19 @@ export const githubIntegration: WebhookIntegration<
 
   selectAgent(config: AppConfig, event: IntegrationEvent): AgentSelection | undefined {
     return selectAgentFromGitHubPayload(event.payload, config.agents.selection, event.eventName);
+  },
+
+  async routeAgent(
+    config: AppConfig,
+    event: IntegrationEvent,
+    selection: AgentSelection
+  ): Promise<AgentSelection> {
+    if (!selection.usesDefaultAgent) return selection;
+    return await routeDefaultAgentWithJev(
+      config,
+      selection,
+      extractAgentRequestFromGitHubPayload(event.payload, event.eventName, selection)
+    );
   },
 
   resolveTarget(event: IntegrationEvent): IntegrationTarget<GitHubResponseTarget> | undefined {

@@ -59,6 +59,11 @@ export interface WebhookIntegration<
   routePath(config: AppConfig): string;
   receive(config: AppConfig, input: RawWebhookInput): Promise<IntegrationEvent> | IntegrationEvent;
   selectAgent(config: AppConfig, event: IntegrationEvent): AgentSelection | undefined;
+  routeAgent?(
+    config: AppConfig,
+    event: IntegrationEvent,
+    selection: AgentSelection
+  ): Promise<AgentSelection>;
   resolveTarget(event: IntegrationEvent): IntegrationTarget<TTarget> | undefined;
   prepareRun(
     config: AppConfig,

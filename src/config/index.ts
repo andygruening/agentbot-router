@@ -13,7 +13,8 @@ export type {
   GitHubIntegrationConfig,
   GitHubReactionContent,
   IntegrationConfig,
-  DockerAgentRunnerConfig
+  DockerAgentRunnerConfig,
+  JevAgentRouterConfig
 } from "./types.ts";
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -36,6 +37,10 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       promptPrefix: readOptionalString(env.AGENT_PROMPT_PREFIX)
     },
     agents: {
+      jev: {
+        apiKey: readOptionalString(env.TYPESAFE_API_KEY),
+        choicesPath: path.resolve(readString(env.JEV_CHOICES_PATH, "jev-choices.json"))
+      },
       selection: {
         triggerTag: readString(env.AGENT_TRIGGER_TAG, "agent"),
         defaultAgent,

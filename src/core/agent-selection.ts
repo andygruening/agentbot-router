@@ -9,6 +9,16 @@ export type AgentSelection = {
   usesDefaultAgent: boolean;
   model?: string;
   reasoning?: string;
+  routing?: AgentRoutingDecision;
+};
+
+export type AgentRoutingDecision = {
+  provider: "typesafe-jev";
+  option?: string;
+  confidence?: number;
+  probabilities?: Record<string, number>;
+  decisionModel?: string;
+  fallbackReason?: string;
 };
 
 export type AgentTagCandidate = {
@@ -125,11 +135,11 @@ function parseAgentTag(value: string, configuredTags: ConfiguredAgentTag[]): Par
   return { ...configuredTag, ...(model ? { model } : {}), ...(reasoning ? { reasoning } : {}) };
 }
 
-function isModelName(value: string): boolean {
+export function isModelName(value: string): boolean {
   return /^[a-z0-9][a-z0-9._-]{0,79}$/i.test(value) && !value.startsWith("-");
 }
 
-function supportedReasoning(agent: string): string[] {
+export function supportedReasoning(agent: string): string[] {
   return agent === "codex"
     ? ["minimal", "low", "medium", "high", "xhigh"]
     : ["low", "medium", "high", "xhigh", "max"];

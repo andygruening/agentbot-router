@@ -76,9 +76,13 @@ HOST=127.0.0.1
 PORT=8787
 AGENT_DEFAULT=codex
 AGENT_TAGS=codex,claude
+TYPESAFE_API_KEY=
+JEV_CHOICES_PATH=jev-choices.json
 ```
 
 Binding the receiver to `127.0.0.1` keeps port 8787 off the public network. Cloudflare Tunnel connects to that local listener.
+
+`TYPESAFE_API_KEY` is optional. When set, the generic `$agent` tag sends the triggering user message and the descriptions in `jev-choices.json` to TypeSafe Jev, which selects the agent, model, and reasoning level. Edit that JSON file to control the available choices. If the key is empty or routing fails, `$agent` uses `AGENT_DEFAULT` and the selected CLI's configured model. The key remains in the receiver's `.env` and is not passed into job containers.
 
 ## Authenticate Codex
 

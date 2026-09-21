@@ -1,0 +1,29 @@
+{
+  "question": "Which agent, model, and reasoning level should handle this user request?",
+  "options": {
+    "codex_sol_low": {
+      "agent": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning": "low",
+      "description": "Use for clear questions, small fixes, focused edits, and routine repository tasks where speed matters."
+    },
+    "codex_sol_high": {
+      "agent": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "description": "Use for difficult debugging, architecture work, broad refactors, or tasks requiring careful multi-step analysis."
+    },
+    "claude_fable_low": {
+      "agent": "claude",
+      "model": "fable-5.1",
+      "reasoning": "low",
+      "description": "Use for focused writing, explanation, review, and straightforward implementation tasks suited to Claude."
+    },
+    "claude_fable_high": {
+      "agent": "claude",
+      "model": "fable-5.1",
+      "reasoning": "high",
+      "description": "Use for complex analysis, nuanced reviews, long-context reasoning, and substantial implementation tasks suited to Claude."
+    }
+  }
+}

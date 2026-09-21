@@ -19,6 +19,7 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
   assert.ok(args.includes("GH_TOKEN"));
   assert.ok(!args.includes("CODEX_API_KEY"));
   assert.ok(!args.includes("ANTHROPIC_API_KEY"));
+  assert.ok(!args.some((arg) => arg.includes("TYPESAFE_API_KEY")));
 });
 
 test("Docker runner mounts Claude subscription auth home", () => {

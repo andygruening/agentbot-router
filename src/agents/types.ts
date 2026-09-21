@@ -1,5 +1,6 @@
 import type { AppConfig } from "../config/index.ts";
 import type { WebhookContext } from "../core/webhook-context.ts";
+import type { AgentRoutingDecision } from "../core/agent-selection.ts";
 
 export type AgentJobStatus =
   | "dry-run"
@@ -15,6 +16,7 @@ export type AgentJob = {
   agent: string;
   model?: string;
   reasoning?: string;
+  routing?: AgentRoutingDecision;
   runnerId: string;
   runnerName: string;
   command: string;

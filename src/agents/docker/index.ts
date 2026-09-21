@@ -50,6 +50,7 @@ export async function startDockerAgentJob(config: AppConfig, context: WebhookCon
   const base: AgentJob = { jobId: context.jobId, status: "running", agent: context.agentSelection.agent,
     ...(selectedModel ? { model: selectedModel } : {}),
     ...(context.agentSelection.reasoning ? { reasoning: context.agentSelection.reasoning } : {}),
+    ...(context.agentSelection.routing ? { routing: context.agentSelection.routing } : {}),
     runnerId: context.agentSelection.agent, runnerName: `${context.agentRunnerName} in Docker`, command: config.agents.docker.command,
     args, jobDir: context.jobDir, stdoutPath, stderrPath, transcriptPath, agentOutputPath: context.agentOutputPath,
     resultPath, metadataPath, promptPath: context.promptPath, startedAt, kind: "docker-container" };

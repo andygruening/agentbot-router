@@ -108,6 +108,13 @@ elif ! grep -qE '^(GH_TOKEN|GITHUB_TOKEN)=.+$' .env && [[ -z "${GH_TOKEN:-}${GIT
   fail 'a GitHub token is required for cloning repositories, pushing changes, creating pull requests, and posting replies.'
 fi
 
+printf '%s' 'TypeSafe API key for optional $agent routing (input hidden; leave blank to skip or keep existing): '
+read -r -s typesafe_api_key
+printf '\n'
+if [[ -n "$typesafe_api_key" ]]; then
+  set_env TYPESAFE_API_KEY "$typesafe_api_key"
+fi
+
 say '3/5 Agent subscription authentication'
 printf '%s\n' 'Choose at least one CLI. Each login opens a device or browser authentication flow.'
 printf '%s\n' '  1) Codex'

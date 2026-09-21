@@ -153,7 +153,7 @@ async function handleRequest(
 
   const rawBody = await readRequestBody(request, config.core.maxBodyBytes);
   const event = await integration.receive(config, { request, rawBody });
-  const agentSelection = integration.selectAgent(config, event);
+  const agentSelection = await integration.selectAgent(config, event);
   logIncomingWebhook(request, event, integration, agentSelection);
 
   if (config.core.allowedEvents && !config.core.allowedEvents.has(event.eventName)) {
@@ -237,7 +237,8 @@ async function handleRequest(
     status: "accepted",
     agent: agentSelection.agent,
     model: agentSelection.model,
-    reasoning: agentSelection.reasoning
+    reasoning: agentSelection.reasoning,
+    agentRouting: agentSelection.usesDefaultAgent ? "pending" : "explicit"
   });
   void processAcceptedDelivery(config, launchAgent, integration, event, target, context).catch(
     async (error: unknown) => {
@@ -270,9 +271,19 @@ async function processAcceptedDelivery(
   target: NonNullable<ReturnType<WebhookIntegration["resolveTarget"]>>,
   context: WebhookContext
 ): Promise<void> {
-  const preparedRun = await integration.prepareRun(config, context, event, target);
+  const [agentSelection, preparedRun] = await Promise.all([
+    integration.routeAgent
+      ? integration.routeAgent(config, event, context.agentSelection)
+      : Promise.resolve(context.agentSelection),
+    integration.prepareRun(config, context, event, target)
+  ]);
+  await writeJsonFileAtomic(path.join(context.jobDir, "agent-routing.json"), agentSelection);
+  const agentRunner = findAgentRunner(config, agentSelection.agent);
   const contextWithPrompt: WebhookContext = {
     ...context,
+    agentRunnerId: agentRunner.id,
+    agentRunnerName: agentRunner.displayName,
+    agentSelection,
     metadata: {
       ...context.metadata,
       ...preparedRun.executionMetadata
