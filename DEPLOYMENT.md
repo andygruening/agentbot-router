@@ -1,307 +1,253 @@
-# Deployment
+# Ubuntu Server Deployment
 
-This guide configures `local-agent-bot` as a webhook receiver, exposes it through Cloudflare Tunnel, and registers one GitHub App whose installation covers every repository in a personal account or organization. Each accepted task runs in a disposable Docker container. Codex and Claude subscription logins persist in separate Docker volumes.
+This guide installs `local-agent-bot` on an Ubuntu server, runs each Codex or Claude task in a disposable Docker container, exposes the receiver with a remotely managed Cloudflare Tunnel, and delivers GitHub issue and pull request webhooks through a GitHub App.
 
-## Requirements
+Use a dedicated server and service account for trusted agent workloads. Docker access is effectively root access. Run the administrative commands from a sudo-enabled account.
 
-- Node.js 22.6 or newer, pnpm 11.20.0, Git, GitHub CLI, Docker Engine or Docker Desktop, and `cloudflared`.
-- A domain managed in Cloudflare.
-- A GitHub account or organization where you can create and install a GitHub App.
-- A GitHub token for unattended repository and response operations.
-- A Codex subscription and/or Claude subscription. LLM API keys are not used.
+## 1. Install all required tools
 
-On Ubuntu or Debian, install GitHub CLI with:
+The server needs Node.js 22.6 or newer, pnpm 11.20.0, Git, GitHub CLI, Docker Engine, OpenSSL, curl, and `cloudflared`.
+
+Install the base packages and Docker from Ubuntu's repositories:
 
 ```bash
 sudo apt update
-sudo apt install gh
+sudo apt install -y ca-certificates curl git gh openssl docker.io
+sudo systemctl enable --now docker
 ```
 
-Install `cloudflared` using the [official Cloudflare packages or downloads](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/downloads/). Confirm the required commands are available:
+Install Node.js 22:
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+Create a dedicated service account and grant it Docker access:
+
+```bash
+sudo adduser --disabled-password --gecos "" agentbot
+sudo usermod --append --groups docker agentbot
+```
+
+Install the pinned pnpm version for that account without requiring npm:
+
+```bash
+sudo -iu agentbot bash -lc 'curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.20.0 SHELL=/bin/bash sh -'
+```
+
+Add Cloudflare's signing key and stable package repository, then install `cloudflared`:
+
+```bash
+sudo mkdir -p --mode=0755 /usr/share/keyrings
+curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+  | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared any main' \
+  | sudo tee /etc/apt/sources.list.d/cloudflared.list
+sudo apt update
+sudo apt install -y cloudflared
+```
+
+Verify every command before continuing:
 
 ```bash
 node --version
-pnpm --version
+sudo -iu agentbot bash -lc 'export PATH="$HOME/.local/share/pnpm/bin:$PATH"; pnpm --version'
 git --version
 gh --version
-docker version
-cloudflared version
+docker --version
+cloudflared --version
 ```
 
-## Quickstart
+Node must report 22.6 or newer and pnpm must report 11.20.0. If `agentbot` cannot run `docker version`, sign out of that account and start a new login session so its new group membership takes effect.
 
-Install pnpm and GitHub CLI, then clone this public repository:
+References: [pnpm standalone installation](https://pnpm.io/installation) and [Cloudflare's Debian package repository](https://pkg.cloudflare.com/).
 
-```bash
-curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=11.20.0 sh -
-sudo apt update
-sudo apt install gh
-git clone https://github.com/andygruening/local-agent-bot.git
-cd local-agent-bot
-```
+## 2. Pull the repository onto the server
 
-Then run the interactive setup:
+Create the application directory, clone the public repository as `agentbot`, install the locked dependencies, and build it:
 
 ```bash
-pnpm setup
-```
-
-The quickstart checks local requirements, installs dependencies, builds the application, creates or updates a private `.env`, securely collects the runtime GitHub token, generates a webhook secret, and authenticates Codex, Claude, or both. You may skip either agent, but setup requires at least one. Codex and Claude use subscription device or browser login; the script does not request LLM API keys.
-
-The quickstart ends with the local start command and the remaining Cloudflare Tunnel and GitHub App steps. Use the sections below when setting up those services or when you prefer manual setup.
-
-## Install the application
-
-Clone this repository and run the pinned install and build:
-
-```bash
-git clone YOUR_REPOSITORY_URL local-agent-bot
-cd local-agent-bot
+sudo install -d -o agentbot -g agentbot /srv/local-agent-bot
+sudo -iu agentbot bash
+export PATH="$HOME/.local/share/pnpm/bin:$PATH"
+git clone https://github.com/andygruening/local-agent-bot.git /srv/local-agent-bot
+cd /srv/local-agent-bot
 pnpm install --frozen-lockfile
 pnpm build
-cp .env.example .env
+exit
 ```
 
-Create a long random webhook secret:
+Future updates use the same account:
 
 ```bash
-openssl rand -hex 32
+sudo -iu agentbot bash
+export PATH="$HOME/.local/share/pnpm/bin:$PATH"
+cd /srv/local-agent-bot
+git pull --ff-only
+pnpm install --frozen-lockfile
+pnpm build
+exit
+sudo systemctl restart local-agent-bot
 ```
 
-Set that value in `.env`:
+## 3. Configure the application and agent authentication
+
+Create the private environment file:
+
+```bash
+sudo -u agentbot cp /srv/local-agent-bot/.env.example /srv/local-agent-bot/.env
+sudo chmod 600 /srv/local-agent-bot/.env
+openssl rand -hex 32
+sudoedit /srv/local-agent-bot/.env
+```
+
+Use the generated random value for `GITHUB_WEBHOOK_SECRET`. Configure at least these values:
 
 ```env
-GITHUB_WEBHOOK_SECRET=replace-with-the-generated-secret
 HOST=127.0.0.1
 PORT=8787
+GITHUB_WEBHOOK_PATH=/webhooks/github
+GITHUB_WEBHOOK_SECRET=replace-with-the-generated-secret
+ALLOWED_EVENTS=issues,issue_comment,pull_request,pull_request_review,pull_request_review_comment
+
 AGENT_DEFAULT=codex
 AGENT_TAGS=codex,claude
+GH_TOKEN=github_pat_REPLACE_ME
+
+# Optional: enables TypeSafe Jev routing for $agent.
 TYPESAFE_API_KEY=
 JEV_CHOICES_PATH=jev-choices.json
 ```
 
-Binding the receiver to `127.0.0.1` keeps port 8787 off the public network. Cloudflare Tunnel connects to that local listener.
+`GH_TOKEN` must be able to clone every target repository, push task branches, create pull requests, read issues and pull requests, and post comments and reactions. The receiver passes it into a job container only for that job. It is separate from the read-only GitHub App used to deliver webhooks.
 
-`TYPESAFE_API_KEY` is optional. When set, the generic `$agent` tag sends the triggering user message and the descriptions in `jev-choices.json` to TypeSafe Jev, which selects the agent, model, and reasoning level. Edit that JSON file to control the available choices. If the key is empty or routing fails, `$agent` uses `AGENT_DEFAULT` and the selected CLI's configured model. The key remains in the receiver's `.env` and is not passed into job containers.
+`TYPESAFE_API_KEY` is optional. When present, `$agent` uses TypeSafe Jev and `jev-choices.json` to select an agent, model, and reasoning level. Edit that JSON file to control the available choices. If Jev is unconfigured or unavailable, `$agent` uses `AGENT_DEFAULT` and that CLI's configured model. The TypeSafe key remains in the receiver process and is never passed to job containers.
 
-## Authenticate Codex
-
-Run this required one-time setup for Codex:
+Authenticate at least one agent CLI with its subscription account. These commands build the shared image and save renewable login credentials in private Docker volumes:
 
 ```bash
+sudo -iu agentbot bash
+export PATH="$HOME/.local/share/pnpm/bin:$PATH"
+cd /srv/local-agent-bot
 pnpm setup:codex
-```
-
-The command builds the agent image, creates the `local-agent-codex-auth` Docker volume, and starts `codex login --device-auth`. Open the displayed URL on any computer, enter the device code, and sign in with the ChatGPT account that owns the Codex subscription. Future Codex jobs mount this volume at `/root/.codex` so refreshed subscription credentials survive disposable containers.
-
-## Authenticate Claude
-
-Run this required one-time setup for Claude:
-
-```bash
 pnpm setup:claude
+exit
 ```
 
-The command builds the same image, creates the `local-agent-claude-auth` Docker volume, and starts `claude auth login`. Choose Claude App login and complete the browser flow with the account that owns the Claude subscription. Future Claude jobs mount this volume as the container's root home because Claude stores subscription state in `/root/.claude/` and `/root/.claude.json`.
+You may run only one of those commands, but remove the other CLI from `AGENT_TAGS` and set `AGENT_DEFAULT` to the authenticated CLI. Codex uses device authentication with the ChatGPT account that owns the subscription. Claude uses Claude App browser authentication. No Codex or Claude API key is required.
 
-Run only the setup commands for CLIs enabled in `AGENT_TAGS`. Re-run a setup command if its CLI reports an expired login. Treat both Docker volumes like passwords: they contain renewable subscription credentials.
-
-## Configure GitHub access for jobs and replies
-
-The GitHub App configured later delivers webhooks. Runtime GitHub operations currently use `GH_TOKEN` separately. The token must be able to:
-
-- Clone every repository on which the app is installed.
-- Push task branches and branches supplied by pull request webhooks.
-- Create pull requests.
-- Read issues, pull requests, comments, reviews, and repository activity.
-- Create and remove reactions and post issue or pull request comments.
-
-Export the token in the environment that starts the receiver:
+Create the receiver's systemd unit:
 
 ```bash
-export GH_TOKEN=github_pat_REPLACE_ME
-```
+sudo tee /etc/systemd/system/local-agent-bot.service >/dev/null <<'UNIT'
+[Unit]
+Description=Local agent GitHub webhook receiver
+After=network-online.target docker.service
+Wants=network-online.target docker.service
 
-Do not commit it or place it in a Docker image. The receiver passes it to a job container only while that container is running. Verify access before continuing:
+[Service]
+Type=simple
+User=agentbot
+Group=agentbot
+SupplementaryGroups=docker
+WorkingDirectory=/srv/local-agent-bot
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/node --env-file=.env dist/src/index.js
+Restart=on-failure
+RestartSec=5
+UMask=0077
 
-```bash
-gh auth status
-gh repo view OWNER/REPOSITORY
-```
+[Install]
+WantedBy=multi-user.target
+UNIT
 
-## Start and verify the receiver
-
-```bash
-pnpm start
-```
-
-In another terminal:
-
-```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now local-agent-bot
+sudo systemctl status local-agent-bot
 curl http://127.0.0.1:8787/health
 ```
 
-For the first signed webhook test, set `DRY_RUN=true` in `.env` and restart the receiver. Change it to `false` after webhook delivery and signature verification work.
+Keep `HOST=127.0.0.1`. The receiver port does not need to be open in the server firewall because `cloudflared` connects to it locally.
 
-## Create the Cloudflare Tunnel
+## 4. Configure Cloudflare Tunnel in the dashboard and on the server
 
-A named Cloudflare Tunnel provides a stable HTTPS hostname without exposing an inbound application port. The tunnel connector makes an outbound connection to Cloudflare.
+Your domain must already use Cloudflare DNS. Create a remotely managed tunnel in the Cloudflare dashboard:
 
-Authenticate `cloudflared` and create the tunnel:
+1. Open **Networking → Tunnels**.
+2. Select **Create a tunnel**.
+3. Name it `local-agent-bot` and select **Create Tunnel**.
+4. Choose **Debian** and the server's architecture.
+5. Copy the installation command shown by Cloudflare. It contains the tunnel token.
 
-```bash
-cloudflared tunnel login
-cloudflared tunnel create local-agent-bot
-cloudflared tunnel list
-```
-
-The create command prints a tunnel UUID and writes a credentials JSON file under `~/.cloudflared/`. Create `~/.cloudflared/config.yml`, replacing both UUID values and the hostname:
-
-```yaml
-tunnel: YOUR_TUNNEL_UUID
-credentials-file: /absolute/path/to/.cloudflared/YOUR_TUNNEL_UUID.json
-
-ingress:
-  - hostname: agent.example.com
-    service: http://127.0.0.1:8787
-  - service: http_status:404
-```
-
-Create the Cloudflare DNS route and validate the ingress configuration:
+Because `cloudflared` is already installed, the server-side part of that command is:
 
 ```bash
-cloudflared tunnel route dns local-agent-bot agent.example.com
-cloudflared tunnel ingress validate
-cloudflared tunnel run local-agent-bot
+sudo cloudflared service install YOUR_TUNNEL_TOKEN
+sudo systemctl enable --now cloudflared
+sudo systemctl status cloudflared
 ```
 
-With both the receiver and tunnel running, verify:
+Treat the tunnel token as a secret. Anyone with it can run a connector for this tunnel. Return to the dashboard and wait until the connector is **Healthy**.
+
+Add the public webhook hostname in the dashboard:
+
+1. Open the `local-agent-bot` tunnel.
+2. On **Routes**, select **Add route → Published application**.
+3. Choose a hostname such as `agent.example.com` on your Cloudflare-managed domain.
+4. Set **Service URL** to `http://127.0.0.1:8787`.
+5. Save the route.
+
+Do not put an interactive Cloudflare Access policy in front of this hostname. GitHub cannot complete an interactive login. GitHub's webhook signature and `GITHUB_WEBHOOK_SECRET` authenticate deliveries.
+
+Verify the complete route:
 
 ```bash
 curl https://agent.example.com/health
 ```
 
-Do not place an interactive Cloudflare Access login policy in front of this webhook hostname; GitHub cannot complete that browser flow. The webhook secret and receiver signature validation authenticate deliveries.
+The endpoint must return successfully before configuring GitHub. The tunnel uses outbound connections, so port 8787 remains closed to the Internet. See Cloudflare's [dashboard-managed tunnel guide](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/get-started/create-remote-tunnel/).
 
-Keep the account-wide `cert.pem` and tunnel credentials JSON private. The credentials JSON is sufficient to run this tunnel; `cert.pem` can manage tunnels in the Cloudflare account. See Cloudflare's [locally managed tunnel guide](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/create-local-tunnel/) and [tunnel credential scopes](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/tunnel-permissions/).
-
-## Create the GitHub App
+## 5. Configure the GitHub App and webhook
 
 Create one GitHub App under the personal account or organization that owns the repositories:
 
-1. Open **Settings → Developer settings → GitHub Apps → New GitHub App**. For an organization, open the organization's settings first.
-2. Enter a unique app name and use this repository's URL as the homepage URL.
-3. Leave user authorization and callback URLs disabled; this receiver does not use a user OAuth flow.
+1. Open **Settings → Developer settings → GitHub Apps → New GitHub App**. For an organization, begin in the organization's settings.
+2. Enter a unique app name and use `https://github.com/andygruening/local-agent-bot` as the homepage URL.
+3. Leave user authorization and callback URLs disabled.
 4. Enable **Webhooks**.
-5. Set **Webhook URL** to `https://agent.example.com/webhooks/github`.
-6. Set **Webhook secret** to the exact `GITHUB_WEBHOOK_SECRET` value in `.env`.
+5. Set **Webhook URL** to `https://agent.example.com/webhooks/github`, replacing the hostname with the Cloudflare route created above.
+6. Copy the exact `GITHUB_WEBHOOK_SECRET` from `/srv/local-agent-bot/.env` into **Webhook secret**.
 7. Leave SSL verification enabled.
-8. Under **Repository permissions**, grant:
-   - **Issues: Read-only** to make issue and issue-comment webhook subscriptions available.
-   - **Pull requests: Read-only** to make pull request and review webhook subscriptions available.
-   - **Metadata: Read-only**, which GitHub grants to installed apps.
-9. Under **Subscribe to events**, enable:
+8. Grant these **Repository permissions**:
+   - **Issues: Read-only**
+   - **Pull requests: Read-only**
+   - **Metadata: Read-only**
+9. Subscribe to these events:
    - **Issues**
    - **Issue comment**
    - **Pull request**
    - **Pull request review**
    - **Pull request review comment**
-10. Select **Only on this account** unless other GitHub accounts must also install the app, then create it.
+10. Select **Only on this account** unless unrelated GitHub accounts also need to install the app, then create it.
 
-GitHub only offers webhook subscriptions allowed by the selected permissions. The GitHub documentation explains the relationship between [GitHub App permissions and webhook events](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/using-webhooks-with-github-apps).
+Install the app:
 
-## Install the GitHub App on all repositories
-
-From the new app's settings:
-
-1. Select **Install App**.
+1. Open the app's **Install App** page.
 2. Select the personal account or organization.
 3. Choose **All repositories**.
 4. Confirm the installation.
 
-“All repositories” applies to that installation account and includes repositories subsequently created there. It is not one global installation across unrelated GitHub accounts. Install the same app separately on each personal account or organization that should send events. GitHub documents the account-level installation flow in [Installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app).
+“All repositories” applies to that account or organization and automatically covers repositories subsequently created there. Install the app separately for every other account or organization that should send webhooks.
 
-The app now sends the selected events from every accessible repository to the single Cloudflare hostname. Set `ALLOWED_EVENTS` in `.env` to the same event set if you want an additional receiver-side allowlist:
+Test the full flow:
 
-```env
-ALLOWED_EVENTS=issues,issue_comment,pull_request,pull_request_review,pull_request_review_comment
-```
+1. Temporarily set `DRY_RUN=true` in `/srv/local-agent-bot/.env` and restart the service with `sudo systemctl restart local-agent-bot`.
+2. Create an issue in an installed repository and add a comment containing `$codex`, `$claude`, or `$agent`.
+3. In the GitHub App's **Advanced** page, confirm the delivery received HTTP 202.
+4. Inspect `journalctl -u local-agent-bot` and `/srv/local-agent-bot/.webhook-events/`.
+5. Set `DRY_RUN=false`, restart the service, and submit a real task.
 
-These read-only GitHub App permissions are sufficient because `GH_TOKEN`, rather than a GitHub App installation token, performs cloning, pushes, pull request creation, comments, and reactions in the current implementation.
+For a supplied pull request branch, changed files are committed and pushed back to that branch. Without a supplied branch, the worker creates a task branch and pull request only when files changed. A question-only task posts its response without creating a branch or pull request.
 
-## Test the end-to-end flow
-
-1. Confirm the receiver health endpoint through Cloudflare.
-2. In GitHub App settings, open **Advanced** and inspect **Recent Deliveries**.
-3. Create an issue in an installed repository and add a comment containing `$codex`, `$claude`, or `$agent`.
-4. Confirm GitHub receives HTTP 202.
-5. Inspect the receiver logs and `.webhook-events/<job-id>/`.
-6. With `DRY_RUN=false`, confirm Docker creates a temporary job container and removes it after completion.
-
-Each job clones the repository inside its container. If GitHub supplies a pull request or branch head, the job checks it out and pushes actual changes to that branch. Without a supplied branch, the job uses a disposable Git worktree and creates a task branch and pull request only when files changed. A question-only job writes its answer without creating a branch, commit, or pull request. The host receiver posts `agent-output.md` after the container exits.
-
-Repeated GitHub delivery IDs do not launch a second job. Check `processing-error.json`, `job.json`, Docker logs, and the receiver log when a task fails. Restarting the receiver can interrupt result handling for active jobs; unfinished jobs are not resumed automatically.
-
-## Local vs Remote Deployment
-
-The application, agent authentication, Cloudflare Tunnel, and GitHub App steps above are the same in both environments. The difference is how the long-running receiver and tunnel processes are supervised.
-
-### Local
-
-- Use Docker Desktop or a local Docker Engine.
-- Run `pnpm start` in one terminal and `cloudflared tunnel run local-agent-bot` in another.
-- Keep the computer awake and connected while receiving webhooks.
-- Store `GH_TOKEN` in the shell environment or a private local secret manager.
-- Local deployment is suitable for development and attended use.
-
-### Remote
-
-- Use a dedicated non-root service account such as `agentbot` on a Linux VPS.
-- Grant that account Docker access only on a host dedicated to trusted agent workloads; Docker daemon access is effectively root-level access.
-- Store the repository and `.webhook-events` in a directory owned by the service account, with `.env` mode `0600`.
-- Store `GH_TOKEN` in `/etc/local-agent-bot.env` with root ownership and mode `0600`:
-
-  ```bash
-  sudo install -m 600 -o root -g root /dev/null /etc/local-agent-bot.env
-  sudoedit /etc/local-agent-bot.env
-  ```
-
-  Add a single `GH_TOKEN=github_pat_REPLACE_ME` line to that file.
-
-- Run the receiver using a unit such as:
-
-  ```ini
-  # /etc/systemd/system/local-agent-bot.service
-  [Unit]
-  Description=Local agent webhook receiver
-  After=network-online.target docker.service
-  Wants=network-online.target docker.service
-
-  [Service]
-  Type=simple
-  User=agentbot
-  Group=agentbot
-  SupplementaryGroups=docker
-  WorkingDirectory=/srv/local-agent-bot
-  EnvironmentFile=/etc/local-agent-bot.env
-  Environment=PATH=/usr/local/bin:/usr/bin:/bin
-  ExecStart=/usr/bin/node --env-file-if-exists=.env dist/src/index.js
-  Restart=on-failure
-  RestartSec=5
-  UMask=0077
-
-  [Install]
-  WantedBy=multi-user.target
-  ```
-
-  Enable it with `sudo systemctl daemon-reload && sudo systemctl enable --now local-agent-bot`.
-
-- Install the tunnel as a service with the explicit user configuration path:
-
-  ```bash
-  sudo cloudflared --config /home/agentbot/.cloudflared/config.yml service install
-  sudo systemctl enable --now cloudflared
-  ```
-
-- Keep `HOST=127.0.0.1`; open only SSH and any unrelated services required by the VPS. Cloudflare Tunnel does not require inbound port 8787.
-- Follow Cloudflare's [Linux service instructions](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/local-management/as-a-service/linux/) when the config or service account paths differ.
+The GitHub App only delivers read-only webhooks. `GH_TOKEN` performs repository cloning, pushes, pull request creation, comments, and reactions. See GitHub's documentation for [webhook permissions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/using-webhooks-with-github-apps) and [installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app).
