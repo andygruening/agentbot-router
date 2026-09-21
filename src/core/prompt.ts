@@ -20,6 +20,8 @@ Webhook metadata:
 - Task ID: ${context.jobId}
 - Agent runner: ${context.agentRunnerName}
 - Selected agent: ${context.agentSelection.agent}
+- Selected model: ${context.agentSelection.model ?? "configured default"}
+- Selected reasoning: ${context.agentSelection.reasoning ?? "configured default"}
 - Trigger tag: ${context.agentSelection.tag} (${context.agentSelection.source})
 - Repository: ${context.metadata.repositoryFullName ?? "unknown"}
 - Action: ${context.metadata.action ?? "none"}

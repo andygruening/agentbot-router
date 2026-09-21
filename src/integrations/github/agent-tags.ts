@@ -8,6 +8,7 @@ import {
 
 export {
   AmbiguousAgentTagError,
+  InvalidAgentTagError,
   type AgentSelection
 } from "../../core/agent-selection.ts";
 

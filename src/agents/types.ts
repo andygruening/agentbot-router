@@ -13,6 +13,8 @@ export type AgentJob = {
   jobId: string;
   status: AgentJobStatus;
   agent: string;
+  model?: string;
+  reasoning?: string;
   runnerId: string;
   runnerName: string;
   command: string;

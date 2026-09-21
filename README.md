@@ -26,7 +26,9 @@ The quickstart securely collects the GitHub token used to clone target repositor
 
 ## Agent selection
 
-A delivery launches an agent only when the new comment, issue or pull request body, or label contains a configured tag. `$agent` selects `AGENT_DEFAULT`; `$codex` and `$claude` select those CLIs directly. On `issue_comment` events, only the new comment is scanned. Configure supported direct tags with `AGENT_TAGS`. The selected CLI uses its own model setting, `CODEX_DEFAULT_MODEL` or `CLAUDE_MODEL`.
+A delivery launches an agent only when the new comment, issue or pull request body, or label contains a configured tag. `$agent` selects `AGENT_DEFAULT`; `$codex` and `$claude` select those CLIs directly. Add a model and optional reasoning level with `$codex:gpt-5.6-sol`, `$codex:gpt-5.6-sol:low`, `$claude:fable-5.1`, or `$claude:fable-5.1:low`. Omitting either override uses that CLI's configured default. Codex accepts `minimal`, `low`, `medium`, `high`, and `xhigh`; Claude accepts `low`, `medium`, `high`, `xhigh`, and `max`, subject to support by the selected model.
+
+On `issue_comment` events, only the new comment is scanned. Configure supported direct agents with `AGENT_TAGS`. Conflicting agent or model tags are rejected as ambiguous.
 
 Each accepted job writes its webhook payload, GitHub context, prompt, process logs, output, and result under `WEBHOOK_EVENT_DIR`. The agent writes the public reply to `agent-output.md` and ends with an `AGENT_WORKER_DONE` or `AGENT_WORKER_BLOCKED` envelope. The receiver posts the output file through `gh`; the agent must not post its own GitHub response.
 

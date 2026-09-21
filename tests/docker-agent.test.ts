@@ -14,16 +14,23 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
   assert.ok(args.includes("local-agent-codex-auth:/root/.codex"));
   assert.ok(args.includes("GITHUB_REPOSITORY=octo/example"));
   assert.ok(args.includes("GITHUB_BRANCH=feature/fix"));
+  assert.ok(args.includes("AGENT_MODEL=gpt-5.5"));
+  assert.ok(args.includes("AGENT_REASONING="));
   assert.ok(args.includes("GH_TOKEN"));
   assert.ok(!args.includes("CODEX_API_KEY"));
   assert.ok(!args.includes("ANTHROPIC_API_KEY"));
 });
 
 test("Docker runner mounts Claude subscription auth home", () => {
-  const args = buildDockerArgs(readConfig({}), buildContext("claude"));
+  const context = buildContext("claude");
+  context.agentSelection.model = "fable-5.1";
+  context.agentSelection.reasoning = "low";
+  const args = buildDockerArgs(readConfig({}), context);
   assert.ok(args.includes("local-agent-claude-auth:/root"));
   assert.ok(args.includes("GITHUB_BRANCH="));
   assert.ok(args.includes("AGENT_CLI=claude"));
+  assert.ok(args.includes("AGENT_MODEL=fable-5.1"));
+  assert.ok(args.includes("AGENT_REASONING=low"));
 });
 
 function buildContext(agent: "codex" | "claude", branch?: string): WebhookContext {

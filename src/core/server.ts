@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import path from "node:path";
 import {
   AmbiguousAgentTagError,
+  InvalidAgentTagError,
   type AgentSelection
 } from "./agent-selection.ts";
 import {
@@ -78,13 +79,21 @@ export function createWebhookServer(
 
       if (error instanceof AmbiguousAgentTagError) {
         logRejectedRequest(request, 400, "multiple_agent_tags", {
-          agents: error.agents
+          agents: error.agents,
+          selections: error.selections
         });
         sendJson(response, 400, {
           ok: false,
           error: "multiple_agent_tags",
-          agents: error.agents
+          agents: error.agents,
+          selections: error.selections
         });
+        return;
+      }
+
+      if (error instanceof InvalidAgentTagError) {
+        logRejectedRequest(request, 400, "invalid_agent_tag", { message: error.message });
+        sendJson(response, 400, { ok: false, error: "invalid_agent_tag", message: error.message });
         return;
       }
 
@@ -226,7 +235,9 @@ async function handleRequest(
     jobId: context.jobId,
     jobDir: context.jobDir,
     status: "accepted",
-    agent: agentSelection.agent
+    agent: agentSelection.agent,
+    model: agentSelection.model,
+    reasoning: agentSelection.reasoning
   });
   void processAcceptedDelivery(config, launchAgent, integration, event, target, context).catch(
     async (error: unknown) => {

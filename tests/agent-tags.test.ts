@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   AmbiguousAgentTagError,
+  InvalidAgentTagError,
   selectAgentFromGitHubPayload as selectAgentFromPayload
 } from "../src/integrations/github/agent-tags.ts";
 import { readConfig } from "../src/config/index.ts";
@@ -38,6 +39,50 @@ test("direct configured tags select that CLI", () => {
 
   assert.equal(selection?.agent, "claude");
   assert.equal(selection?.usesDefaultAgent, false);
+});
+
+test("agent tags select model and reasoning overrides", () => {
+  const config = readConfig({ AGENT_TAGS: "codex,claude" }).agents.selection;
+
+  assert.deepEqual(
+    selectAgentFromPayload({ comment: { body: "$codex:gpt-5.6-sol:low fix this" } }, config),
+    {
+      agent: "codex", model: "gpt-5.6-sol", reasoning: "low",
+      tag: "codex:gpt-5.6-sol:low", source: "text", usesDefaultAgent: false
+    }
+  );
+  assert.deepEqual(
+    selectAgentFromPayload({ issue: { labels: [{ name: "claude:fable-5.1" }] } }, config),
+    {
+      agent: "claude", model: "fable-5.1",
+      tag: "claude:fable-5.1", source: "label", usesDefaultAgent: false
+    }
+  );
+  assert.equal(
+    selectAgentFromPayload({ comment: { body: "Please handle this with $codex:gpt-5.6-sol:low." } }, config)?.reasoning,
+    "low"
+  );
+});
+
+test("agent tags reject invalid models and unsupported reasoning", () => {
+  const config = readConfig({ AGENT_TAGS: "codex,claude" }).agents.selection;
+  for (const tag of ["$codex::low", "$codex:gpt-5.6-sol:max", "$claude:fable-5.1:minimal"]) {
+    assert.throws(
+      () => selectAgentFromPayload({ comment: { body: tag } }, config),
+      InvalidAgentTagError
+    );
+  }
+});
+
+test("different configurations for the same agent are ambiguous", () => {
+  const config = readConfig({ AGENT_TAGS: "codex,claude" }).agents.selection;
+  assert.throws(
+    () => selectAgentFromPayload(
+      { comment: { body: "$codex:gpt-5.6-sol:low $codex:gpt-5.6-sol:high" } },
+      config
+    ),
+    AmbiguousAgentTagError
+  );
 });
 
 test("issue_comment tags are read only from the new comment", () => {

@@ -31,11 +31,13 @@ git config user.email "local-agent-bot@users.noreply.github.com"
 
 if [ "$AGENT_CLI" = codex ]; then
   set -- codex exec --dangerously-bypass-approvals-and-sandbox --color never
-  if [ -n "${CODEX_MODEL:-}" ]; then set -- "$@" --model "$CODEX_MODEL"; fi
+  if [ -n "${AGENT_MODEL:-}" ]; then set -- "$@" --model "$AGENT_MODEL"; fi
+  if [ -n "${AGENT_REASONING:-}" ]; then set -- "$@" --config "model_reasoning_effort=\"$AGENT_REASONING\""; fi
   "$@" - < /job/prompt.md > "$result_file"
 elif [ "$AGENT_CLI" = claude ]; then
   set -- claude --print --dangerously-skip-permissions --output-format text
-  if [ -n "${CLAUDE_MODEL:-}" ]; then set -- "$@" --model "$CLAUDE_MODEL"; fi
+  if [ -n "${AGENT_MODEL:-}" ]; then set -- "$@" --model "$AGENT_MODEL"; fi
+  if [ -n "${AGENT_REASONING:-}" ]; then set -- "$@" --effort "$AGENT_REASONING"; fi
   "$@" "Follow the task instructions on stdin." < /job/prompt.md > "$result_file"
 else
   echo "Unsupported AGENT_CLI: $AGENT_CLI" >&2

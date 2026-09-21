@@ -13,6 +13,9 @@ export const claudeDockerRunner = runner("claude", "Claude CLI");
 
 export function buildDockerArgs(config: AppConfig, context: WebhookContext): string[] {
   const args = ["run", "--rm", "--name", `local-agent-${safeName(context.jobId)}`];
+  const selectedModel = context.agentSelection.model ?? (context.agentSelection.agent === "codex"
+    ? config.agents.codex.defaultModel
+    : config.agents.claude.model);
   if (config.agents.docker.pull) args.push("--pull", "always");
   const authMount = context.agentSelection.agent === "codex"
     ? `${config.agents.docker.codexAuthVolume}:/root/.codex`
@@ -24,8 +27,8 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
     "--env", `GITHUB_REPOSITORY=${context.metadata.cloneRepositoryFullName ?? context.metadata.repositoryFullName ?? ""}`,
     "--env", `GITHUB_BRANCH=${context.metadata.branch ?? ""}`,
     "--env", `JOB_ID=${context.jobId}`,
-    "--env", `CODEX_MODEL=${config.agents.codex.defaultModel}`,
-    "--env", `CLAUDE_MODEL=${config.agents.claude.model ?? ""}`,
+    "--env", `AGENT_MODEL=${selectedModel ?? ""}`,
+    "--env", `AGENT_REASONING=${context.agentSelection.reasoning ?? ""}`,
     config.agents.docker.image);
   return args;
 }
@@ -41,7 +44,12 @@ export async function startDockerAgentJob(config: AppConfig, context: WebhookCon
   const metadataPath = path.join(context.jobDir, "job.json");
   const args = buildDockerArgs(config, context);
   const startedAt = new Date().toISOString();
+  const selectedModel = context.agentSelection.model ?? (context.agentSelection.agent === "codex"
+    ? config.agents.codex.defaultModel
+    : config.agents.claude.model);
   const base: AgentJob = { jobId: context.jobId, status: "running", agent: context.agentSelection.agent,
+    ...(selectedModel ? { model: selectedModel } : {}),
+    ...(context.agentSelection.reasoning ? { reasoning: context.agentSelection.reasoning } : {}),
     runnerId: context.agentSelection.agent, runnerName: `${context.agentRunnerName} in Docker`, command: config.agents.docker.command,
     args, jobDir: context.jobDir, stdoutPath, stderrPath, transcriptPath, agentOutputPath: context.agentOutputPath,
     resultPath, metadataPath, promptPath: context.promptPath, startedAt, kind: "docker-container" };
