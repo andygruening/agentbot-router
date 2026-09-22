@@ -10,8 +10,8 @@ import type { WebhookContext } from "../src/core/webhook-context.ts";
 test("Docker runner mounts Codex subscription auth and passes repository branch", () => {
   const context = buildContext("codex", "feature/fix");
   const args = buildDockerArgs(readConfig({}), context);
-  assert.deepEqual(args.slice(0, 4), ["run", "--rm", "--name", "local-agent-job-1"]);
-  assert.ok(args.includes("local-agent-codex-auth:/home/agent/.codex"));
+  assert.deepEqual(args.slice(0, 4), ["run", "--rm", "--name", "agentbot-router-job-1"]);
+  assert.ok(args.includes("agentbot-router-codex-auth:/home/agent/.codex"));
   assert.deepEqual(args.slice(args.indexOf("--tmpfs"), args.indexOf("--tmpfs") + 2), [
     "--tmpfs",
     "/workspace:rw,exec,mode=1777"
@@ -36,7 +36,7 @@ test("Docker runner mounts Claude subscription auth home", () => {
   context.agentSelection.model = "fable-5.1";
   context.agentSelection.reasoning = "low";
   const args = buildDockerArgs(readConfig({}), context);
-  assert.ok(args.includes("local-agent-claude-auth:/home/agent"));
+  assert.ok(args.includes("agentbot-router-claude-auth:/home/agent"));
   assert.ok(args.includes("GITHUB_BRANCH="));
   assert.ok(args.includes("AGENT_CLI=claude"));
   assert.ok(args.includes("AGENT_MODEL=fable-5.1"));

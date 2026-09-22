@@ -1,4 +1,4 @@
-# local-agent-bot
+# agentbot-router
 
 A Node.js TypeScript webhook receiver that saves accepted deliveries, gathers GitHub issue or pull request context with `gh`, and launches Codex CLI or Claude CLI in a disposable Docker container. Subscription authentication persists in dedicated Docker volumes. The receiver handles GitHub reactions and result comments after the container finishes.
 
@@ -13,6 +13,8 @@ See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for webhook diagnostics, service an
 ## Agent selection
 
 A delivery launches an agent only when the new comment, issue or pull request body, or label contains a configured tag. `$agent` asks TypeSafe Jev to select an agent, model, and reasoning level from [jev-choices.json](jev-choices.json). Set `TYPESAFE_API_KEY` in `.env` to enable this routing. Without that key, `$agent` uses `AGENT_DEFAULT` and its configured model.
+
+See [EXAMPLES.md](EXAMPLES.md) for every bundled model and reasoning combination with ready-to-use GitHub prompt examples.
 
 `$codex` and `$claude` select those CLIs directly. Add a model and optional reasoning level with `$codex:gpt-5.6-sol`, `$codex:gpt-5.6-sol:low`, `$claude:fable`, or `$claude:fable:low`. Omitting either override uses that CLI's configured default. Codex accepts `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`; Claude accepts `low`, `medium`, `high`, `xhigh`, `max`, and `ultracode`, subject to support by the selected model.
 

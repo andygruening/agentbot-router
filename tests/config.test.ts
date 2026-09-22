@@ -8,10 +8,10 @@ test("readConfig applies Docker runner defaults", () => {
   assert.equal(config.agents.selection.defaultAgent, "codex");
   assert.deepEqual(config.agents.selection.tags, ["codex"]);
   assert.equal(config.agents.docker.command, "docker");
-  assert.equal(config.agents.docker.image, "local-agent-bot-agent:latest");
+  assert.equal(config.agents.docker.image, "agentbot-router-agent:latest");
   assert.equal(config.agents.docker.pull, false);
-  assert.equal(config.agents.docker.codexAuthVolume, "local-agent-codex-auth");
-  assert.equal(config.agents.docker.claudeAuthVolume, "local-agent-claude-auth");
+  assert.equal(config.agents.docker.codexAuthVolume, "agentbot-router-codex-auth");
+  assert.equal(config.agents.docker.claudeAuthVolume, "agentbot-router-claude-auth");
   assert.equal(config.agents.docker.execTimeoutMs, 3_600_000);
   assert.equal(config.agents.jev.apiKey, undefined);
   assert.match(config.agents.jev.choicesPath, /jev-choices\.json$/);

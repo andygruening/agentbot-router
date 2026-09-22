@@ -1,6 +1,6 @@
 # Ubuntu Server Deployment
 
-This guide installs `local-agent-bot` on an Ubuntu server, runs each Codex or Claude task in a disposable Docker container, exposes the receiver with a remotely managed Cloudflare Tunnel, and delivers GitHub issue and pull request webhooks through a GitHub App.
+This guide installs `agentbot-router` on an Ubuntu server, runs each Codex or Claude task in a disposable Docker container, exposes the receiver with a remotely managed Cloudflare Tunnel, and delivers GitHub issue and pull request webhooks through a GitHub App.
 
 Use a dedicated server and service account for trusted agent workloads. Docker access is effectively root access. Run the administrative commands from a sudo-enabled account.
 
@@ -68,11 +68,11 @@ References: [pnpm standalone installation](https://pnpm.io/installation) and [Cl
 Create the application directory, clone the public repository as `agentbot`, install the locked dependencies, and build it:
 
 ```bash
-sudo install -d -o agentbot -g agentbot /srv/local-agent-bot
+sudo install -d -o agentbot -g agentbot /srv/agentbot-router
 sudo -iu agentbot bash
 export PATH="$HOME/.local/share/pnpm/bin:$PATH"
-git clone https://github.com/andygruening/local-agent-bot.git /srv/local-agent-bot
-cd /srv/local-agent-bot
+git clone https://github.com/andygruening/agentbot-router.git /srv/agentbot-router
+cd /srv/agentbot-router
 pnpm install --frozen-lockfile
 pnpm build
 exit
@@ -83,12 +83,12 @@ Future updates use the same account:
 ```bash
 sudo -iu agentbot bash
 export PATH="$HOME/.local/share/pnpm/bin:$PATH"
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 git pull --ff-only
 pnpm install --frozen-lockfile
 pnpm build
 exit
-sudo systemctl restart local-agent-bot
+sudo systemctl restart agentbot-router
 ```
 
 ## 3. Configure the application and agent authentication
@@ -96,10 +96,10 @@ sudo systemctl restart local-agent-bot
 Create the private environment file:
 
 ```bash
-sudo -u agentbot cp /srv/local-agent-bot/.env.example /srv/local-agent-bot/.env
-sudo chmod 600 /srv/local-agent-bot/.env
+sudo -u agentbot cp /srv/agentbot-router/.env.example /srv/agentbot-router/.env
+sudo chmod 600 /srv/agentbot-router/.env
 openssl rand -hex 32
-sudoedit /srv/local-agent-bot/.env
+sudoedit /srv/agentbot-router/.env
 ```
 
 Use the generated random value for `GITHUB_WEBHOOK_SECRET`. Configure at least these values:
@@ -129,7 +129,7 @@ Authenticate at least one agent CLI with its subscription account. These command
 ```bash
 sudo -iu agentbot bash
 export PATH="$HOME/.local/share/pnpm/bin:$PATH"
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 pnpm setup:codex
 pnpm setup:claude
 exit
@@ -146,9 +146,9 @@ Each task receives a fresh in-memory `/workspace` filesystem. Repository clones 
 Create the receiver's systemd unit:
 
 ```bash
-sudo tee /etc/systemd/system/local-agent-bot.service >/dev/null <<'UNIT'
+sudo tee /etc/systemd/system/agentbot-router.service >/dev/null <<'UNIT'
 [Unit]
-Description=Local agent GitHub webhook receiver
+Description=Agentbot Router GitHub webhook receiver
 After=network-online.target docker.service
 Wants=network-online.target docker.service
 
@@ -157,7 +157,7 @@ Type=simple
 User=agentbot
 Group=agentbot
 SupplementaryGroups=docker
-WorkingDirectory=/srv/local-agent-bot
+WorkingDirectory=/srv/agentbot-router
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
 ExecStart=/usr/bin/node --env-file=.env dist/src/index.js
 Restart=on-failure
@@ -169,8 +169,8 @@ WantedBy=multi-user.target
 UNIT
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now local-agent-bot
-sudo systemctl status local-agent-bot
+sudo systemctl enable --now agentbot-router
+sudo systemctl status agentbot-router
 curl http://127.0.0.1:8787/health
 ```
 
@@ -182,7 +182,7 @@ Your domain must already use Cloudflare DNS. Create a remotely managed tunnel in
 
 1. Open **Networking → Tunnels**.
 2. Select **Create a tunnel**.
-3. Name it `local-agent-bot` and select **Create Tunnel**.
+3. Name it `agentbot-router` and select **Create Tunnel**.
 4. Choose **Debian** and the server's architecture.
 5. Copy the installation command shown by Cloudflare. It contains the tunnel token.
 
@@ -198,7 +198,7 @@ Treat the tunnel token as a secret. Anyone with it can run a connector for this 
 
 Add the public webhook hostname in the dashboard:
 
-1. Open the `local-agent-bot` tunnel.
+1. Open the `agentbot-router` tunnel.
 2. On **Routes**, select **Add route → Published application**.
 3. Choose a hostname such as `agent.example.com` on your Cloudflare-managed domain.
 4. Set **Service URL** to `http://127.0.0.1:8787`.
@@ -219,11 +219,11 @@ The endpoint must return successfully before configuring GitHub. The tunnel uses
 Create one GitHub App under the personal account or organization that owns the repositories:
 
 1. Open **Settings → Developer settings → GitHub Apps → New GitHub App**. For an organization, begin in the organization's settings.
-2. Enter a unique app name and use `https://github.com/andygruening/local-agent-bot` as the homepage URL.
+2. Enter a unique app name and use `https://github.com/andygruening/agentbot-router` as the homepage URL.
 3. Leave user authorization and callback URLs disabled.
 4. Enable **Webhooks**.
 5. Set **Webhook URL** to `https://agent.example.com/webhooks/github`, replacing the hostname with the Cloudflare route created above.
-6. Copy the exact `GITHUB_WEBHOOK_SECRET` from `/srv/local-agent-bot/.env` into **Webhook secret**.
+6. Copy the exact `GITHUB_WEBHOOK_SECRET` from `/srv/agentbot-router/.env` into **Webhook secret**.
 7. Leave SSL verification enabled.
 8. Grant these **Repository permissions**:
    - **Issues: Read-only**
@@ -248,10 +248,10 @@ Install the app:
 
 Test the full flow:
 
-1. Temporarily set `DRY_RUN=true` in `/srv/local-agent-bot/.env` and restart the service with `sudo systemctl restart local-agent-bot`.
+1. Temporarily set `DRY_RUN=true` in `/srv/agentbot-router/.env` and restart the service with `sudo systemctl restart agentbot-router`.
 2. Create an issue in an installed repository and add a comment containing `$codex`, `$claude`, or `$agent`.
 3. In the GitHub App's **Advanced** page, confirm the delivery received HTTP 202.
-4. Inspect `journalctl -u local-agent-bot` and `/srv/local-agent-bot/.webhook-events/`.
+4. Inspect `journalctl -u agentbot-router` and `/srv/agentbot-router/.webhook-events/`.
 5. Set `DRY_RUN=false`, restart the service, and submit a real task.
 
 For a supplied pull request branch, changed files are committed and pushed back to that branch. Without a supplied branch, the worker creates a task branch and pull request only when files changed. A question-only task posts its response without creating a branch or pull request.

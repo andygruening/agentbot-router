@@ -1,5 +1,5 @@
 {
-  "name": "local-agent-bot",
+  "name": "agentbot-router",
   "version": "0.1.0",
   "private": true,
   "type": "module",

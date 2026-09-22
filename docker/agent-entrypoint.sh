@@ -37,8 +37,8 @@ else
   git -C "$source_dir" worktree add --detach "$repo_dir" HEAD
 fi
 cd "$repo_dir"
-git config user.name "local-agent-bot"
-git config user.email "local-agent-bot@users.noreply.github.com"
+git config user.name "agentbot-router"
+git config user.email "agentbot-router@users.noreply.github.com"
 
 if [ "$AGENT_CLI" = codex ]; then
   export CODEX_HOME=/home/agent/.codex
