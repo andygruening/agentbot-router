@@ -16,10 +16,9 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
     "--tmpfs",
     "/workspace:rw,exec,mode=1777"
   ]);
-  assert.deepEqual(args.slice(args.indexOf("--user"), args.indexOf("--user") + 2), [
-    "--user",
-    `${process.getuid?.()}:${process.getgid?.()}`
-  ]);
+  assert.ok(args.includes(`LOCAL_AGENT_UID=${process.getuid?.()}`));
+  assert.ok(args.includes(`LOCAL_AGENT_GID=${process.getgid?.()}`));
+  assert.ok(!args.includes("--user"));
   assert.ok(args.includes("HOME=/home/agent"));
   assert.ok(args.includes("GITHUB_REPOSITORY=octo/example"));
   assert.ok(args.includes("GITHUB_BRANCH=feature/fix"));

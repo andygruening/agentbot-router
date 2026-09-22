@@ -15,7 +15,6 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
   const args = ["run", "--rm", "--name", `local-agent-${safeName(context.jobId)}`];
   const uid = process.getuid?.();
   const gid = process.getgid?.();
-  if (uid !== undefined && gid !== undefined) args.push("--user", `${uid}:${gid}`);
   const selectedModel = context.agentSelection.model ?? (context.agentSelection.agent === "codex"
     ? config.agents.codex.defaultModel
     : config.agents.claude.model);
@@ -27,6 +26,8 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
     "--volume", `${path.resolve(context.jobDir)}:/job`,
     "--volume", authMount,
     "--env", "HOME=/home/agent",
+    "--env", `LOCAL_AGENT_UID=${uid ?? 1000}`,
+    "--env", `LOCAL_AGENT_GID=${gid ?? 1000}`,
     "--env", "GH_TOKEN", "--env", "GITHUB_TOKEN",
     "--env", `AGENT_CLI=${context.agentSelection.agent}`,
     "--env", `GITHUB_REPOSITORY=${context.metadata.cloneRepositoryFullName ?? context.metadata.repositoryFullName ?? ""}`,

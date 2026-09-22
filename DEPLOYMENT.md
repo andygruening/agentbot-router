@@ -137,7 +137,7 @@ exit
 
 You may run only one of those commands, but remove the other CLI from `AGENT_TAGS` and set `AGENT_DEFAULT` to the authenticated CLI. Codex uses device authentication with the ChatGPT account that owns the subscription. Claude uses Claude App browser authentication. No Codex or Claude API key is required.
 
-Run these setup commands as `agentbot`, including after upgrading from a version that ran job containers as root. They assign the authentication volumes to the service account. Task containers then use the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
+Run these setup commands as `agentbot`. At job startup, the container assigns the selected authentication volume to the service account and then drops root before launching Codex or Claude. This automatically migrates volumes created by older root based versions. The agent process uses the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
 
 Each task receives a fresh in-memory `/workspace` filesystem. Repository clones and temporary worktrees disappear with the container, while the job record and agent output remain under `WEBHOOK_EVENT_DIR` on the host.
 
