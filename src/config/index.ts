@@ -23,7 +23,7 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     "gpt-5.5"
   );
   const defaultAgent = readCliName(env.AGENT_DEFAULT, "AGENT_DEFAULT", "codex");
-  const agentTags = readStringList(env.AGENT_TAGS, "codex,claude")
+  const agentTags = readStringList(env.AGENT_TAGS, "codex")
     .map((tag) => readCliName(tag, "AGENT_TAGS", "codex"));
 
   return {

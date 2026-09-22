@@ -112,7 +112,7 @@ GITHUB_WEBHOOK_SECRET=replace-with-the-generated-secret
 ALLOWED_EVENTS=issues,issue_comment,pull_request,pull_request_review,pull_request_review_comment
 
 AGENT_DEFAULT=codex
-AGENT_TAGS=codex,claude
+AGENT_TAGS=codex
 GH_TOKEN=github_pat_REPLACE_ME
 
 # Optional: enables TypeSafe Jev routing for $agent.
@@ -122,7 +122,7 @@ JEV_CHOICES_PATH=jev-choices.json
 
 `GH_TOKEN` must be able to clone every target repository, push task branches, create pull requests, read issues and pull requests, and post comments and reactions. The receiver passes it into a job container only for that job. It is separate from the read-only GitHub App used to deliver webhooks.
 
-`TYPESAFE_API_KEY` is optional. When present, `$agent` uses TypeSafe Jev and `jev-choices.json` to select an agent, model, and reasoning level. Edit that JSON file to control the available choices. If Jev is unconfigured or unavailable, `$agent` uses `AGENT_DEFAULT` and that CLI's configured model. The TypeSafe key remains in the receiver process and is never passed to job containers.
+`TYPESAFE_API_KEY` is optional. When present, `$agent` uses TypeSafe Jev and `jev-choices.json` to select an agent, model, and reasoning level. Jev only receives choices whose agent appears in `AGENT_TAGS`. Edit that JSON file to control the available choices. If Jev is unconfigured or unavailable, `$agent` uses `AGENT_DEFAULT` and that CLI's configured model. The TypeSafe key remains in the receiver process and is never passed to job containers.
 
 Authenticate at least one agent CLI with its subscription account. These commands build the shared image and save renewable login credentials in private Docker volumes:
 
