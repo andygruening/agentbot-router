@@ -7,7 +7,7 @@ This guide covers the deployment and container failures most likely to occur on 
 Check that the receiver and Cloudflare Tunnel are running:
 
 ```bash
-sudo systemctl status local-agent-bot --no-pager
+sudo systemctl status agentbot-router --no-pager
 sudo systemctl status cloudflared --no-pager
 curl http://127.0.0.1:8787/health
 curl https://agent.example.com/health
@@ -16,22 +16,22 @@ curl https://agent.example.com/health
 Follow receiver logs while sending a GitHub test delivery:
 
 ```bash
-sudo journalctl -u local-agent-bot -f
+sudo journalctl -u agentbot-router -f
 ```
 
 View recent receiver or tunnel errors:
 
 ```bash
-sudo journalctl -u local-agent-bot -n 200 --no-pager
+sudo journalctl -u agentbot-router -n 200 --no-pager
 sudo journalctl -u cloudflared -n 200 --no-pager
 ```
 
 GitHub App delivery details are under **GitHub App settings → Advanced → Recent Deliveries**. A delivery accepted for asynchronous processing returns HTTP 202. The receiver log records whether a webhook was accepted or ignored and which processing step failed.
 
-Each accepted delivery also has a directory under the configured `WEBHOOK_EVENT_DIR`, which defaults to `/srv/local-agent-bot/.webhook-events` when systemd uses that working directory. Find the latest jobs with:
+Each accepted delivery also has a directory under the configured `WEBHOOK_EVENT_DIR`, which defaults to `/srv/agentbot-router/.webhook-events` when systemd uses that working directory. Find the latest jobs with:
 
 ```bash
-sudo -u agentbot find /srv/local-agent-bot/.webhook-events -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+sudo -u agentbot find /srv/agentbot-router/.webhook-events -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
   | sort -nr | head
 ```
 
@@ -48,20 +48,20 @@ Useful files within a job directory include:
 
 Do not publish these files without reviewing them because webhook payloads and logs can contain private repository data.
 
-## `local-agent-bot.service` is not found
+## `agentbot-router.service` is not found
 
-The command `sudo systemctl restart local-agent-bot` only works after the unit in [DEPLOYMENT.md](DEPLOYMENT.md) has been created at `/etc/systemd/system/local-agent-bot.service` and systemd has reloaded its units.
+The command `sudo systemctl restart agentbot-router` only works after the unit in [DEPLOYMENT.md](DEPLOYMENT.md) has been created at `/etc/systemd/system/agentbot-router.service` and systemd has reloaded its units.
 
 ```bash
-sudo test -f /etc/systemd/system/local-agent-bot.service
+sudo test -f /etc/systemd/system/agentbot-router.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now local-agent-bot
+sudo systemctl enable --now agentbot-router
 ```
 
 If the first command fails, create the unit by following the deployment guide, then run the remaining commands. Inspect a rejected unit with:
 
 ```bash
-sudo systemd-analyze verify /etc/systemd/system/local-agent-bot.service
+sudo systemd-analyze verify /etc/systemd/system/agentbot-router.service
 ```
 
 ## GitHub webhook does not reach the receiver
@@ -71,7 +71,7 @@ Verify each hop in order:
 1. `curl http://127.0.0.1:8787/health` checks the receiver.
 2. `curl https://agent.example.com/health` checks the Cloudflare route.
 3. GitHub App **Recent Deliveries** shows the HTTP status and response body.
-4. `journalctl -u local-agent-bot -f` shows parsing and processing.
+4. `journalctl -u agentbot-router -f` shows parsing and processing.
 
 Confirm that the GitHub App webhook URL ends in the configured path, normally `/webhooks/github`, and that the App webhook secret exactly matches `GITHUB_WEBHOOK_SECRET`. Do not put an interactive Cloudflare Access policy in front of the webhook hostname.
 
@@ -83,12 +83,12 @@ The installed GitHub CLI is too old for that flag. Current project code does not
 
 ```bash
 sudo -iu agentbot
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 git pull --ff-only
 pnpm install --frozen-lockfile
 pnpm build
 exit
-sudo systemctl restart local-agent-bot
+sudo systemctl restart agentbot-router
 ```
 
 Use `gh --version` to record the installed version if the error remains. Do not patch generated files under `dist/`; rebuild them from the current source.
@@ -100,7 +100,7 @@ The standalone pnpm distribution installs its bundled Node.js runtime through th
 ```bash
 sudo -iu agentbot
 export PATH="$HOME/.local/share/pnpm/bin:$PATH"
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 git pull --ff-only
 pnpm install --frozen-lockfile
 exit
@@ -141,10 +141,10 @@ Rerun setup as the same account used by systemd. The setup script repairs owners
 ```bash
 sudo -iu agentbot
 export PATH="$HOME/.local/share/pnpm/bin:$PATH"
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 pnpm setup:codex
 exit
-sudo systemctl restart local-agent-bot
+sudo systemctl restart agentbot-router
 ```
 
 The current runner pins `HOME=/home/agent` and `CODEX_HOME=/home/agent/.codex` before and after dropping privileges. Rebuild the Docker image after updating the repository so this behavior is present.
@@ -158,7 +158,7 @@ Run the setup command as `agentbot`, complete device authentication, and require
 ```bash
 sudo -iu agentbot
 export PATH="$HOME/.local/share/pnpm/bin:$PATH"
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 pnpm setup:codex
 exit
 ```
@@ -166,11 +166,11 @@ exit
 Confirm that `.env` uses the same `CODEX_AUTH_VOLUME` name as the setup command and that the volume contains the file without printing its contents:
 
 ```bash
-docker volume inspect local-agent-codex-auth
-docker run --rm --volume local-agent-codex-auth:/auth alpine test -s /auth/auth.json
+docker volume inspect agentbot-router-codex-auth
+docker run --rm --volume agentbot-router-codex-auth:/auth alpine test -s /auth/auth.json
 ```
 
-If setup succeeds but jobs still report missing auth, check the effective `CODEX_AUTH_VOLUME` in `/srv/local-agent-bot/.env`, restart the receiver after changing it, and inspect the newest job's Docker arguments in `job.json`.
+If setup succeeds but jobs still report missing auth, check the effective `CODEX_AUTH_VOLUME` in `/srv/agentbot-router/.env`, restart the receiver after changing it, and inspect the newest job's Docker arguments in `job.json`.
 
 ## The wrong agent is selected by `$agent`
 
@@ -201,7 +201,7 @@ Test token access as the service account without printing the token:
 
 ```bash
 sudo -iu agentbot
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 set -a
 . ./.env
 set +a
@@ -216,12 +216,12 @@ The service runs compiled JavaScript and jobs use a built Docker image. After pu
 
 ```bash
 sudo -iu agentbot
-cd /srv/local-agent-bot
+cd /srv/agentbot-router
 pnpm install --frozen-lockfile
 pnpm build
-docker build --tag local-agent-bot-agent:latest --file docker/Dockerfile .
+docker build --tag agentbot-router-agent:latest --file docker/Dockerfile .
 exit
-sudo systemctl restart local-agent-bot
+sudo systemctl restart agentbot-router
 ```
 
 If `AGENT_DOCKER_IMAGE` names another image or tag, build that value instead.

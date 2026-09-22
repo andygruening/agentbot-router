@@ -2,7 +2,7 @@
 
 ## Project Purpose
 
-`local-agent-bot` is a local Node.js TypeScript webhook receiver. It accepts GitHub webhook deliveries, saves each accepted event to disk, gathers GitHub issue or pull request context with `gh`, and launches a configured local agent runner such as Superset or Codex.
+`agentbot-router` is a local Node.js TypeScript webhook receiver. It accepts GitHub webhook deliveries, saves each accepted event to disk, gathers GitHub issue or pull request context with `gh`, and launches a configured local agent runner such as Superset or Codex.
 
 The core server, integrations, and agent runners are intentionally separated so additional webhook providers and runner CLIs can be added without coupling them to GitHub-specific behavior.
 

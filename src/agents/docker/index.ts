@@ -12,7 +12,7 @@ export const codexDockerRunner = runner("codex", "Codex CLI");
 export const claudeDockerRunner = runner("claude", "Claude CLI");
 
 export function buildDockerArgs(config: AppConfig, context: WebhookContext): string[] {
-  const args = ["run", "--rm", "--name", `local-agent-${safeName(context.jobId)}`];
+  const args = ["run", "--rm", "--name", `agentbot-router-${safeName(context.jobId)}`];
   const uid = process.getuid?.();
   const gid = process.getgid?.();
   const selectedModel = context.agentSelection.model ?? (context.agentSelection.agent === "codex"
