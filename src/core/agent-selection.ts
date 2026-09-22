@@ -141,6 +141,6 @@ export function isModelName(value: string): boolean {
 
 export function supportedReasoning(agent: string): string[] {
   return agent === "codex"
-    ? ["minimal", "low", "medium", "high", "xhigh"]
-    : ["low", "medium", "high", "xhigh", "max"];
+    ? ["low", "medium", "high", "xhigh", "max", "ultra"]
+    : ["low", "medium", "high", "xhigh", "max", "ultracode"];
 }

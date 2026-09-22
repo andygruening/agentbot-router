@@ -101,11 +101,26 @@ test("Jev choices reject unsupported reasoning", async () => {
   await writeFile(choicesPath, JSON.stringify({
     question: "Choose",
     options: {
-      invalid: { agent: "codex", model: "gpt-5.6-sol", reasoning: "max", description: "Invalid" },
+      invalid: { agent: "codex", model: "gpt-5.6-sol", reasoning: "minimal", description: "Invalid" },
       valid: { agent: "claude", model: "fable-5.1", reasoning: "low", description: "Valid" }
     }
   }));
   await assert.rejects(() => loadJevChoices(choicesPath), /Invalid Jev option/);
+});
+
+test("Jev choices allow a model without an effort override", async () => {
+  const directory = await mkdtemp(path.join(tmpdir(), "jev-default-effort-"));
+  const choicesPath = path.join(directory, "choices.json");
+  await writeFile(choicesPath, JSON.stringify({
+    question: "Choose",
+    options: {
+      haiku: { agent: "claude", model: "haiku", description: "Fast simple work" },
+      sonnet: { agent: "claude", model: "sonnet", reasoning: "high", description: "Daily coding" }
+    }
+  }));
+
+  const choices = await loadJevChoices(choicesPath);
+  assert.equal(choices.options.haiku?.reasoning, undefined);
 });
 
 async function writeChoices(): Promise<string> {
