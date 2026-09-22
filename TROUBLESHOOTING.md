@@ -93,6 +93,21 @@ sudo systemctl restart local-agent-bot
 
 Use `gh --version` to record the installed version if the error remains. Do not patch generated files under `dist/`; rebuild them from the current source.
 
+## pnpm reports `ERR_PNPM_IGNORED_BUILDS` for `node`
+
+The standalone pnpm distribution installs its bundled Node.js runtime through the `node` package. This repository permits that package's install script in `pnpm-workspace.yaml`. If installation says the `node` build was ignored, the server likely has an older checkout that does not contain the allowlist.
+
+```bash
+sudo -iu agentbot
+export PATH="$HOME/.local/share/pnpm/bin:$PATH"
+cd /srv/local-agent-bot
+git pull --ff-only
+pnpm install --frozen-lockfile
+exit
+```
+
+Confirm that `pnpm-workspace.yaml` includes `node` under `onlyBuiltDependencies`. There is no need to run the interactive `pnpm approve-builds` command when using the current repository configuration.
+
 ## Claude refuses `--dangerously-skip-permissions` as root
 
 Claude refuses that option when its process runs with root privileges. Current containers start as root only long enough to prepare the mounted authentication directory, then use `gosu` to launch the agent with the receiver's UID and GID.
