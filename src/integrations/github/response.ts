@@ -309,7 +309,76 @@ export async function buildResultComment(
     );
   }
 
-  return appendProcessingSignature(job.error ?? "Agent did not report an output.", job);
+  return appendProcessingSignature(buildPublicFailureMessage(job), job);
+}
+
+function buildPublicFailureMessage(job: AgentJob): string {
+  const failure = classifyFailure(job);
+  return [
+    "The agent could not complete this task.",
+    "",
+    `**Stage:** ${failure.stage}`,
+    `**Error:** ${failure.message}`,
+    `**Job ID:** \`${formatInlineCode(job.jobId)}\``,
+    "",
+    "See the server job logs for full diagnostic output."
+  ].join("\n");
+}
+
+function classifyFailure(job: AgentJob): { stage: string; message: string } {
+  const error = job.error?.toLowerCase() ?? "";
+
+  if (job.status === "timeout" || job.signal === "SIGTERM") {
+    return { stage: "Agent execution", message: "The agent exceeded its execution timeout." };
+  }
+  if (
+    error.includes("authentication is missing") ||
+    error.includes("401 unauthorized") ||
+    error.includes("missing bearer or basic authentication") ||
+    error.includes("not logged in")
+  ) {
+    return { stage: "Agent authentication", message: "The selected agent CLI is not authenticated." };
+  }
+  if (
+    error.includes("could not create work tree") ||
+    error.includes("failed to initialize in-process app-server") ||
+    error.includes("permission denied") ||
+    error.includes("operation not permitted")
+  ) {
+    return { stage: "Container setup", message: "The agent container encountered a filesystem permission error." };
+  }
+  if (
+    error.includes("cloning into") ||
+    error.includes("repository not found") ||
+    error.includes("could not read from remote repository") ||
+    error.includes("failed to run git")
+  ) {
+    return { stage: "Repository checkout", message: "The repository could not be cloned or checked out." };
+  }
+  if (
+    error.includes("failed to push") ||
+    error.includes("git push") ||
+    error.includes("gh pr create") ||
+    error.includes("pull request")
+  ) {
+    return { stage: "Repository delivery", message: "The changes could not be pushed or delivered as a pull request." };
+  }
+  if (error.includes("without a valid worker completion envelope")) {
+    return { stage: "Result processing", message: "The agent finished without returning a valid completion result." };
+  }
+  if (
+    error.includes("cannot connect to the docker daemon") ||
+    error.includes("docker: command not found") ||
+    error.includes("spawn docker")
+  ) {
+    return { stage: "Container launch", message: "The agent container could not be started." };
+  }
+
+  return { stage: "Agent execution", message: "The agent process exited unexpectedly." };
+}
+
+function formatInlineCode(value: string): string {
+  return value.replaceAll("`", "'").replace(/[\r\n]/g, " ");
 }
 
 function appendProcessingSignature(body: string, job: AgentJob): string {

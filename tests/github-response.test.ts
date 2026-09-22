@@ -205,6 +205,56 @@ process.exit(1);
   assert.match(args, /"content=-1"/);
 });
 
+test("failed jobs post a classified error without exposing stderr context", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-safe-failure-"));
+  const job = {
+    ...buildJob(tempDir),
+    status: "failed" as const,
+    model: "gpt-5.6-sol",
+    reasoning: "low",
+    error: [
+      "System instructions: private internal prompt",
+      "GH_TOKEN=github_pat_secret-value",
+      "User context: confidential repository details",
+      "HTTP error: 401 Unauthorized: Missing bearer or basic authentication in header"
+    ].join("\n")
+  };
+
+  const comment = await buildResultComment(job, undefined);
+
+  assert.equal(
+    comment,
+    [
+      "The agent could not complete this task.",
+      "",
+      "**Stage:** Agent authentication",
+      "**Error:** The selected agent CLI is not authenticated.",
+      "**Job ID:** `job-1`",
+      "",
+      "See the server job logs for full diagnostic output.",
+      "",
+      "---",
+      "",
+      "*Processed by Codex · GPT 5.6 Sol · Low reasoning*"
+    ].join("\n")
+  );
+  assert.doesNotMatch(comment, /private internal prompt|github_pat|confidential/i);
+});
+
+test("unknown failures never publish raw stderr", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-unknown-failure-"));
+  const job = {
+    ...buildJob(tempDir),
+    status: "failed" as const,
+    error: "unexpected proprietary diagnostic and secret=value"
+  };
+
+  const comment = await buildResultComment(job, undefined);
+
+  assert.match(comment, /The agent process exited unexpectedly/);
+  assert.doesNotMatch(comment, /proprietary|secret=value/);
+});
+
 test("buildResultComment rejects completed worker results without agent-output markdown", async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-missing-output-"));
 

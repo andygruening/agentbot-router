@@ -191,6 +191,8 @@ Confirm that `GH_TOKEN` can read the repository and create issue or pull request
 
 If the container fails before producing a reply, `docker.stderr.log` contains the underlying error and `job.json` records the terminal state. The receiver should still attempt 👎.
 
+Failure comments contain only a classified stage, a safe error summary, and the job ID. Raw stderr, prompts, webhook context, and CLI diagnostics remain in the server job directory and are not posted to GitHub. Use the job ID to locate those artifacts when investigating a failure.
+
 ## Changes cannot be pushed or a pull request cannot be created
 
 Check `docker.stderr.log` for the failed `git push` or `gh pr create` command. Verify that `GH_TOKEN` can clone and push to the target repository and create pull requests. For an event with a supplied branch, changes are pushed to that branch. Without a supplied branch, the worker creates an `agent/<job-id>` branch and pull request only when files changed. Question-only tasks intentionally create neither.
