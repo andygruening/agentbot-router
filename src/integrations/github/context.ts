@@ -365,19 +365,27 @@ async function ghApiJson(config: AppConfig, apiPath: string, step: string): Prom
 }
 
 async function ghApiJsonList(config: AppConfig, apiPath: string, step: string): Promise<unknown[]> {
-  const result = await runGh(config.integrations.github, [
-    "api",
-    apiPath,
-    "--paginate",
-    "--slurp",
-    "-H",
-    "Accept: application/vnd.github+json"
-  ]);
-  if (result.exitCode !== 0) {
-    throw new GitHubContextError(step, result.stderr.trim());
-  }
+  const perPage = 100;
+  const items: unknown[] = [];
 
-  return flattenPaginatedJson(parseJson(result.stdout, step));
+  for (let page = 1; ; page += 1) {
+    const separator = apiPath.includes("?") ? "&" : "?";
+    const result = await runGh(config.integrations.github, [
+      "api",
+      `${apiPath}${separator}per_page=${perPage}&page=${page}`,
+      "-H",
+      "Accept: application/vnd.github+json"
+    ]);
+    if (result.exitCode !== 0) {
+      throw new GitHubContextError(step, result.stderr.trim());
+    }
+
+    const pageItems = flattenPaginatedJson(parseJson(result.stdout, step));
+    items.push(...pageItems);
+    if (pageItems.length < perPage) {
+      return items;
+    }
+  }
 }
 
 async function fetchLinkedOpenPullRequests(

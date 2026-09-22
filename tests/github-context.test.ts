@@ -24,7 +24,7 @@ if (args[0] !== "api") {
   process.exit(1);
 }
 
-const path = args[1];
+const path = args[1].replace(/\\?per_page=100&page=1$/, "");
 const write = (value) => {
   process.stdout.write(JSON.stringify(value));
   process.exit(0);
@@ -43,17 +43,17 @@ if (path === "repos/octo/example/issues/123") {
 }
 
 if (path === "repos/octo/example/issues/123/comments") {
-  write([[{
+  write([{
     id: 111,
     html_url: "https://github.com/octo/example/issues/123#issuecomment-111",
     user: { login: "andy" },
     created_at: "2026-08-28T00:00:00Z",
     body: "$codex please integrate this using https://github.com/octo/example/pull/456"
-  }]]);
+  }]);
 }
 
 if (path === "repos/octo/example/issues/123/timeline") {
-  write([[{
+  write([{
     id: 222,
     event: "cross-referenced",
     created_at: "2026-08-28T00:01:00Z",
@@ -67,16 +67,16 @@ if (path === "repos/octo/example/issues/123/timeline") {
         pull_request: {}
       }
     }
-  }]]);
+  }]);
 }
 
 if (path === "repos/octo/example/issues/123/events") {
-  write([[{
+  write([{
     id: 333,
     event: "labeled",
     created_at: "2026-08-28T00:02:00Z",
     actor: { login: "andy" }
-  }]]);
+  }]);
 }
 
 if (path === "repos/octo/example/pulls/456") {
@@ -151,6 +151,8 @@ process.exit(1);
     assert.match(args, /repos\/octo\/example\/issues\/123\/timeline/);
     assert.match(args, /repos\/octo\/example\/issues\/123\/events/);
     assert.match(args, /repos\/octo\/example\/pulls\/456/);
+    assert.match(args, /per_page=100&page=1/);
+    assert.doesNotMatch(args, /--slurp/);
     assert.doesNotMatch(logs.join("\n"), /please integrate this using/);
   } finally {
     console.log = originalLog;
