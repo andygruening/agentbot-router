@@ -13,15 +13,19 @@ export const claudeDockerRunner = runner("claude", "Claude CLI");
 
 export function buildDockerArgs(config: AppConfig, context: WebhookContext): string[] {
   const args = ["run", "--rm", "--name", `local-agent-${safeName(context.jobId)}`];
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  if (uid !== undefined && gid !== undefined) args.push("--user", `${uid}:${gid}`);
   const selectedModel = context.agentSelection.model ?? (context.agentSelection.agent === "codex"
     ? config.agents.codex.defaultModel
     : config.agents.claude.model);
   if (config.agents.docker.pull) args.push("--pull", "always");
   const authMount = context.agentSelection.agent === "codex"
-    ? `${config.agents.docker.codexAuthVolume}:/root/.codex`
-    : `${config.agents.docker.claudeAuthVolume}:/root`;
+    ? `${config.agents.docker.codexAuthVolume}:/home/agent/.codex`
+    : `${config.agents.docker.claudeAuthVolume}:/home/agent`;
   args.push("--volume", `${path.resolve(context.jobDir)}:/job`,
     "--volume", authMount,
+    "--env", "HOME=/home/agent",
     "--env", "GH_TOKEN", "--env", "GITHUB_TOKEN",
     "--env", `AGENT_CLI=${context.agentSelection.agent}`,
     "--env", `GITHUB_REPOSITORY=${context.metadata.cloneRepositoryFullName ?? context.metadata.repositoryFullName ?? ""}`,
