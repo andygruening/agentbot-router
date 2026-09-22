@@ -12,6 +12,10 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
   const args = buildDockerArgs(readConfig({}), context);
   assert.deepEqual(args.slice(0, 4), ["run", "--rm", "--name", "local-agent-job-1"]);
   assert.ok(args.includes("local-agent-codex-auth:/home/agent/.codex"));
+  assert.deepEqual(args.slice(args.indexOf("--tmpfs"), args.indexOf("--tmpfs") + 2), [
+    "--tmpfs",
+    "/workspace:rw,exec,mode=1777"
+  ]);
   assert.deepEqual(args.slice(args.indexOf("--user"), args.indexOf("--user") + 2), [
     "--user",
     `${process.getuid?.()}:${process.getgid?.()}`

@@ -139,6 +139,8 @@ You may run only one of those commands, but remove the other CLI from `AGENT_TAG
 
 Run these setup commands as `agentbot`, including after upgrading from a version that ran job containers as root. They assign the authentication volumes to the service account. Task containers then use the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
 
+Each task receives a fresh in-memory `/workspace` filesystem. Repository clones and temporary worktrees disappear with the container, while the job record and agent output remain under `WEBHOOK_EVENT_DIR` on the host.
+
 Create the receiver's systemd unit:
 
 ```bash
