@@ -24,33 +24,29 @@ export type AgentSelectionConfig = {
   tags: string[];
 };
 
-export type SupersetAgentRunnerConfig = {
-  command: string;
-  workspaceId?: string;
-  hostId?: string;
-  defaultAgent: string;
-  tags: string[];
-  extraArgs: string[];
-  envPassthrough: string[];
-  terminalPollIntervalMs: number;
-  terminalMaxPolls: number;
+export type JevAgentRouterConfig = {
+  apiKey?: string;
+  choicesPath: string;
 };
 
-export type CodexAgentRunnerConfig = {
+export type DockerAgentRunnerConfig = {
   command: string;
-  defaultModel: string;
-  extraArgs: string[];
-  envPassthrough: string[];
-  sandbox?: "read-only" | "workspace-write" | "danger-full-access";
-  approvalPolicy?: "untrusted" | "on-request" | "never";
-  workingDirectory?: string;
+  image: string;
+  pull: boolean;
+  codexAuthVolume: string;
+  claudeAuthVolume: string;
   execTimeoutMs: number;
 };
 
+export type CodexAgentRunnerConfig = {
+  defaultModel: string;
+};
+
 export type AgentConfig = {
-  runner: string;
   selection: AgentSelectionConfig;
-  superset: SupersetAgentRunnerConfig;
+  jev: JevAgentRouterConfig;
+  docker: DockerAgentRunnerConfig;
+  claude: { model?: string };
   codex: CodexAgentRunnerConfig;
 };
 

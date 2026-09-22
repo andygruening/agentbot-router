@@ -1,6 +1,7 @@
 import type { AgentSelectionConfig } from "../../config/index.ts";
 import {
   extractDollarTags,
+  normalizeAgentTag,
   selectAgentFromCandidates,
   type AgentSelection,
   type AgentTagCandidate
@@ -8,6 +9,7 @@ import {
 
 export {
   AmbiguousAgentTagError,
+  InvalidAgentTagError,
   type AgentSelection
 } from "../../core/agent-selection.ts";
 
@@ -18,6 +20,22 @@ export function selectAgentFromGitHubPayload(
 ): AgentSelection | undefined {
   const candidates = extractTagCandidates(payload, eventName);
   return selectAgentFromCandidates(candidates, config);
+}
+
+export function extractAgentRequestFromGitHubPayload(
+  payload: unknown,
+  eventName: string,
+  selection: AgentSelection
+): string | undefined {
+  const texts = extractTexts(payload, eventName);
+  const selectedTag = normalizeAgentTag(selection.tag);
+  const matchedText = selection.source === "text"
+    ? texts.find((text) => extractDollarTags(text).some((tag) => normalizeAgentTag(tag) === selectedTag))
+    : texts[0];
+  if (!matchedText) return undefined;
+  return matchedText
+    .replace(new RegExp(`\\$${escapeRegex(selection.tag)}(?![a-zA-Z0-9._:-])`, "gi"), "")
+    .trim();
 }
 
 function extractTagCandidates(payload: unknown, eventName: string): AgentTagCandidate[] {
@@ -114,4 +132,8 @@ function readBody(value: unknown): string | undefined {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

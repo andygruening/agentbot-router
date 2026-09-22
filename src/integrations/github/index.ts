@@ -2,6 +2,7 @@ import type { AppConfig } from "../../config/index.ts";
 import type { AgentSelection } from "../../core/agent-selection.ts";
 import type { AgentJob, WorkerResult } from "../../agents/types.ts";
 import type { WebhookContext } from "../../core/webhook-context.ts";
+import { routeDefaultAgentWithJev } from "../../agents/jev.ts";
 import {
   type IntegrationEvent,
   IntegrationOperationError,
@@ -26,7 +27,10 @@ import {
   type GitHubResponseState,
   type GitHubResponseTarget
 } from "./response.ts";
-import { selectAgentFromGitHubPayload } from "./agent-tags.ts";
+import {
+  extractAgentRequestFromGitHubPayload,
+  selectAgentFromGitHubPayload
+} from "./agent-tags.ts";
 import {
   deliveryIdFromHeaders,
   eventNameFromHeaders,
@@ -86,6 +90,19 @@ export const githubIntegration: WebhookIntegration<
     return selectAgentFromGitHubPayload(event.payload, config.agents.selection, event.eventName);
   },
 
+  async routeAgent(
+    config: AppConfig,
+    event: IntegrationEvent,
+    selection: AgentSelection
+  ): Promise<AgentSelection> {
+    if (!selection.usesDefaultAgent) return selection;
+    return await routeDefaultAgentWithJev(
+      config,
+      selection,
+      extractAgentRequestFromGitHubPayload(event.payload, event.eventName, selection)
+    );
+  },
+
   resolveTarget(event: IntegrationEvent): IntegrationTarget<GitHubResponseTarget> | undefined {
     const target = extractGitHubResponseTarget(event.payload, event.eventName);
     if (!target) {
@@ -133,6 +150,13 @@ export const githubIntegration: WebhookIntegration<
       event,
       target: target.value,
       githubIssueContext,
+      executionMetadata: githubIssueContext.currentPullRequest
+        ? {
+            cloneRepositoryFullName:
+              githubIssueContext.currentPullRequest.head.repo ?? target.value.repo,
+            branch: githubIssueContext.currentPullRequest.head.ref
+          }
+        : undefined,
       prompt: buildGitHubPromptSection(config, context, githubIssueContext)
     };
   },
@@ -229,13 +253,24 @@ function extractGitHubMetadata(payload: unknown): WebhookMetadata {
 
   const repository = isRecord(payload.repository) ? payload.repository : undefined;
   const sender = isRecord(payload.sender) ? payload.sender : undefined;
+  const pullRequest = isRecord(payload.pull_request) ? payload.pull_request : undefined;
+  const pullRequestHead = isRecord(pullRequest?.head) ? pullRequest.head : undefined;
+  const pullRequestHeadRepo = isRecord(pullRequestHead?.repo) ? pullRequestHead.repo : undefined;
+  const rawRef = readString(payload.ref);
 
   return {
     action: readString(payload.action),
-    ref: readString(payload.ref),
+    ref: rawRef,
+    branch: readString(pullRequestHead?.ref) ?? branchFromRef(rawRef),
     repositoryFullName: readString(repository?.full_name),
+    cloneRepositoryFullName:
+      readString(pullRequestHeadRepo?.full_name) ?? readString(repository?.full_name),
     senderLogin: readString(sender?.login)
   };
+}
+
+function branchFromRef(ref: string | undefined): string | undefined {
+  return ref?.startsWith("refs/heads/") ? ref.slice("refs/heads/".length) : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

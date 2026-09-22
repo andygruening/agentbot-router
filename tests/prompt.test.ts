@@ -12,18 +12,17 @@ test("buildAgentPrompt leaves GitHub responses to the receiver", () => {
   const prompt = buildAgentPrompt(config, context);
 
   assert.match(prompt, /receiver owns GitHub reactions and final result comments/);
-  assert.match(prompt, /Do not add reactions or post GitHub comments yourself/);
+  assert.match(prompt, /do not add reactions or post GitHub comments yourself/i);
   assert.match(prompt, /agent-output\.md/);
   assert.match(prompt, /write the complete public GitHub response markdown to/);
   assert.match(prompt, /reads .*agent-output\.md/);
-  assert.match(prompt, /Code-change delivery rule/);
-  assert.match(prompt, /gh pr checkout <number> --repo <repo>/);
-  assert.match(prompt, /gh pr create --repo <repo>/);
-  assert.match(prompt, /do not leave changes only in the local workspace/);
-  assert.match(prompt, /SUPERSET_WORKER_BLOCKED/);
-  assert.match(prompt, /SUPERSET_WORKER_DONE/);
-  assert.doesNotMatch(prompt, /summary from SUPERSET_WORKER_DONE/);
-  assert.doesNotMatch(prompt, /SUPERSET_AGENT_OUTPUT/);
+  assert.match(prompt, /Repository delivery rule/);
+  assert.match(prompt, /container wrapper inspects the checkout/);
+  assert.match(prompt, /creates no branch or pull request/);
+  assert.match(prompt, /Do not create branches, worktrees, commits, pushes/);
+  assert.match(prompt, /AGENT_WORKER_BLOCKED/);
+  assert.match(prompt, /AGENT_WORKER_DONE/);
+  assert.doesNotMatch(prompt, /summary from AGENT_WORKER_DONE/);
   assert.doesNotMatch(prompt, /Full parsed payload/);
   assert.doesNotMatch(prompt, /Raw request body/);
   assert.doesNotMatch(prompt, /Parsed payload:/);
@@ -36,8 +35,8 @@ function buildContext(): WebhookContext {
   return {
     integrationId: "github",
     integrationName: "GitHub",
-    agentRunnerId: "superset",
-    agentRunnerName: "Superset",
+    agentRunnerId: "codex",
+    agentRunnerName: "Codex CLI",
     receivedAt: "2026-08-28T00:00:00.000Z",
     eventName: "issue_comment",
     deliveryId: "delivery-1",

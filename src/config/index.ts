@@ -13,31 +13,18 @@ export type {
   GitHubIntegrationConfig,
   GitHubReactionContent,
   IntegrationConfig,
-  SupersetAgentRunnerConfig
+  DockerAgentRunnerConfig,
+  JevAgentRouterConfig
 } from "./types.ts";
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const agentRunner = readString(env.AGENT_RUNNER, "superset").toLowerCase();
-  const supersetDefaultAgent = readString(
-    env.SUPERSET_DEFAULT_AGENT ?? env.SUPERSET_DEFAULT_AGENT_MODEL,
-    "codex"
-  );
   const codexDefaultModel = readString(
     env.CODEX_DEFAULT_MODEL ?? env.CODEX_MODEL,
     "gpt-5.5"
   );
-  const defaultAgent = readString(
-    env.AGENT_DEFAULT,
-    agentRunner === "codex" ? codexDefaultModel : supersetDefaultAgent
-  );
-  const supersetAgentTags = readStringList(
-    env.SUPERSET_AGENT_TAGS ?? env.SUPERSET_AGENT_MODEL_TAGS,
-    "codex,claude"
-  );
-  const agentTags = readStringList(
-    env.AGENT_TAGS,
-    agentRunner === "codex" ? codexDefaultModel : supersetAgentTags.join(",")
-  );
+  const defaultAgent = readCliName(env.AGENT_DEFAULT, "AGENT_DEFAULT", "codex");
+  const agentTags = readStringList(env.AGENT_TAGS, "codex,claude")
+    .map((tag) => readCliName(tag, "AGENT_TAGS", "codex"));
 
   return {
     core: {
@@ -50,60 +37,28 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       promptPrefix: readOptionalString(env.AGENT_PROMPT_PREFIX)
     },
     agents: {
-      runner: agentRunner,
+      jev: {
+        apiKey: readOptionalString(env.TYPESAFE_API_KEY),
+        choicesPath: path.resolve(readString(env.JEV_CHOICES_PATH, "jev-choices.json"))
+      },
       selection: {
         triggerTag: readString(env.AGENT_TRIGGER_TAG, "agent"),
         defaultAgent,
         tags: agentTags
       },
-      superset: {
-        command: readString(env.SUPERSET_COMMAND, "superset"),
-        workspaceId: readOptionalString(env.SUPERSET_WORKSPACE_ID),
-        hostId: readOptionalString(env.SUPERSET_HOST_ID),
-        defaultAgent: supersetDefaultAgent,
-        tags: supersetAgentTags,
-        extraArgs: readStringArray(env.SUPERSET_EXTRA_ARGS_JSON, "SUPERSET_EXTRA_ARGS_JSON"),
-        envPassthrough: readStringArray(
-          env.SUPERSET_ENV_PASSTHROUGH_JSON,
-          "SUPERSET_ENV_PASSTHROUGH_JSON",
-          ["SUPERSET_API_KEY", "SUPERSET_API_URL"]
-        ),
-        terminalPollIntervalMs: readPositiveInt(
-          env.SUPERSET_TERMINAL_POLL_INTERVAL_MS,
-          10_000,
-          "SUPERSET_TERMINAL_POLL_INTERVAL_MS"
-        ),
-        terminalMaxPolls: readPositiveInt(
-          env.SUPERSET_TERMINAL_MAX_POLLS,
-          360,
-          "SUPERSET_TERMINAL_MAX_POLLS"
-        )
+      docker: {
+        command: readString(env.DOCKER_COMMAND, "docker"),
+        image: readString(env.AGENT_DOCKER_IMAGE, "local-agent-bot-agent:latest"),
+        pull: readBoolean(env.AGENT_DOCKER_PULL, false),
+        codexAuthVolume: readString(env.CODEX_AUTH_VOLUME, "local-agent-codex-auth"),
+        claudeAuthVolume: readString(env.CLAUDE_AUTH_VOLUME, "local-agent-claude-auth"),
+        execTimeoutMs: readPositiveInt(env.AGENT_EXEC_TIMEOUT_MS, 3_600_000, "AGENT_EXEC_TIMEOUT_MS")
+      },
+      claude: {
+        model: readOptionalString(env.CLAUDE_MODEL)
       },
       codex: {
-        command: readString(env.CODEX_COMMAND, "codex"),
-        defaultModel: codexDefaultModel,
-        extraArgs: readStringArray(env.CODEX_EXTRA_ARGS_JSON, "CODEX_EXTRA_ARGS_JSON"),
-        envPassthrough: readStringArray(
-          env.CODEX_ENV_PASSTHROUGH_JSON,
-          "CODEX_ENV_PASSTHROUGH_JSON",
-          ["OPENAI_API_KEY", "CODEX_HOME"]
-        ),
-        sandbox: readOptionalEnum(
-          env.CODEX_SANDBOX,
-          "CODEX_SANDBOX",
-          ["read-only", "workspace-write", "danger-full-access"] as const
-        ),
-        approvalPolicy: readOptionalEnum(
-          env.CODEX_APPROVAL_POLICY,
-          "CODEX_APPROVAL_POLICY",
-          ["untrusted", "on-request", "never"] as const
-        ),
-        workingDirectory: readOptionalString(env.CODEX_WORKING_DIRECTORY),
-        execTimeoutMs: readPositiveInt(
-          env.CODEX_EXEC_TIMEOUT_MS,
-          3_600_000,
-          "CODEX_EXEC_TIMEOUT_MS"
-        )
+        defaultModel: codexDefaultModel
       }
     },
     integrations: {
@@ -132,21 +87,12 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   };
 }
 
-function readOptionalEnum<TAllowed extends readonly string[]>(
-  value: string | undefined,
-  name: string,
-  allowed: TAllowed
-): TAllowed[number] | undefined {
-  const raw = readOptionalString(value);
-  if (!raw) {
-    return undefined;
+function readCliName(value: string | undefined, name: string, fallback: string): string {
+  const nameValue = readString(value, fallback).toLowerCase();
+  if (nameValue !== "codex" && nameValue !== "claude") {
+    throw new Error(`${name} must be codex or claude`);
   }
-
-  if (allowed.includes(raw)) {
-    return raw;
-  }
-
-  throw new Error(`${name} must be one of ${allowed.join(", ")}`);
+  return nameValue;
 }
 
 function normalizePath(value: string): string {

@@ -8,7 +8,7 @@ export function parseWorkerResult(
   text: string,
   expectedTask: string
 ): ParsedWorkerResult | undefined {
-  const markerPattern = /^[ \t]*(SUPERSET_WORKER_DONE|SUPERSET_WORKER_BLOCKED)[ \t]*$/gm;
+  const markerPattern = /^[ \t]*(AGENT_WORKER_DONE|AGENT_WORKER_BLOCKED)[ \t]*$/gm;
   let parsed: ParsedWorkerResult | undefined;
   let match: RegExpExecArray | null;
 
@@ -30,7 +30,7 @@ function workerResultFromEnvelope(
   marker: WorkerResult["marker"],
   envelope: Record<string, string>
 ): WorkerResult {
-  const doneMatched = marker === "SUPERSET_WORKER_DONE";
+  const doneMatched = marker === "AGENT_WORKER_DONE";
 
   return {
     status: doneMatched ? "completed" : "blocked",

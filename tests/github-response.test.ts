@@ -133,18 +133,18 @@ test("buildResultComment uses full agent-output markdown exactly", async () => {
   const job = buildJob(tempDir);
   await writeFile(
     job.agentOutputPath,
-    "terminal output before envelope\nSUPERSET_WORKER_BLOCKED\nreason: missing token"
+    "terminal output before envelope\nAGENT_WORKER_BLOCKED\nreason: missing token"
   );
 
   assert.equal(
     await buildResultComment(job, {
       status: "blocked",
-      marker: "SUPERSET_WORKER_BLOCKED",
+      marker: "AGENT_WORKER_BLOCKED",
       task: "job-1",
       reason: "missing token",
       needs: "configure auth"
     }),
-    "terminal output before envelope\nSUPERSET_WORKER_BLOCKED\nreason: missing token"
+    "terminal output before envelope\nAGENT_WORKER_BLOCKED\nreason: missing token"
   );
 });
 
@@ -162,17 +162,14 @@ function buildJob(jobDir: string): AgentJob {
     jobId: "job-1",
     status: "completed",
     agent: "codex",
-    runnerId: "superset",
-    runnerName: "Superset",
-    command: "superset",
+    runnerId: "codex",
+    runnerName: "Codex CLI",
+    command: "codex",
     args: [],
     jobDir,
-    stdoutPath: path.join(jobDir, "superset-create.stdout.json"),
-    stderrPath: path.join(jobDir, "superset-create.stderr.log"),
-    transcriptPath: path.join(jobDir, "superset-terminal-snapshot.json"),
-    createStdoutPath: path.join(jobDir, "superset-create.stdout.json"),
-    createStderrPath: path.join(jobDir, "superset-create.stderr.log"),
-    terminalSnapshotPath: path.join(jobDir, "superset-terminal-snapshot.json"),
+    stdoutPath: path.join(jobDir, "codex-exec.stdout.log"),
+    stderrPath: path.join(jobDir, "codex-exec.stderr.log"),
+    transcriptPath: path.join(jobDir, "codex-last-message.md"),
     agentOutputPath: path.join(jobDir, "agent-output.md"),
     resultPath: path.join(jobDir, "agent-result.json"),
     metadataPath: path.join(jobDir, "job.json"),
@@ -186,7 +183,7 @@ function buildJob(jobDir: string): AgentJob {
 function buildWorkerResult(): WorkerResult {
   return {
     status: "completed",
-    marker: "SUPERSET_WORKER_DONE",
+    marker: "AGENT_WORKER_DONE",
     task: "job-1",
     summary: "done",
     files: "none",

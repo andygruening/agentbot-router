@@ -1,5 +1,6 @@
 import type { AppConfig } from "../config/index.ts";
 import type { WebhookContext } from "../core/webhook-context.ts";
+import type { AgentRoutingDecision } from "../core/agent-selection.ts";
 
 export type AgentJobStatus =
   | "dry-run"
@@ -13,6 +14,9 @@ export type AgentJob = {
   jobId: string;
   status: AgentJobStatus;
   agent: string;
+  model?: string;
+  reasoning?: string;
+  routing?: AgentRoutingDecision;
   runnerId: string;
   runnerName: string;
   command: string;
@@ -31,16 +35,12 @@ export type AgentJob = {
   signal?: NodeJS.Signals | null;
   error?: string;
   sessionId?: string;
-  label?: string;
   kind?: string;
-  createStdoutPath?: string;
-  createStderrPath?: string;
-  terminalSnapshotPath?: string;
 };
 
 export type WorkerResult = {
   status: "completed" | "blocked";
-  marker: "SUPERSET_WORKER_DONE" | "SUPERSET_WORKER_BLOCKED";
+  marker: "AGENT_WORKER_DONE" | "AGENT_WORKER_BLOCKED";
   task?: string;
   summary?: string;
   files?: string;

@@ -10,7 +10,7 @@ export function buildAgentPrompt(config: AppConfig, context: WebhookContext): st
     : "";
   const publicResponseName = context.integrationPrompt.publicResponseName ?? "response";
 
-  return `${prefix}You are a new Superset terminal agent session launched by a local ${context.integrationName} webhook receiver.
+  return `${prefix}You are an agent launched by a ${context.integrationName} webhook receiver.
 
 Webhook metadata:
 - Integration: ${context.integrationName}
@@ -20,6 +20,9 @@ Webhook metadata:
 - Task ID: ${context.jobId}
 - Agent runner: ${context.agentRunnerName}
 - Selected agent: ${context.agentSelection.agent}
+- Selected model: ${context.agentSelection.model ?? "configured default"}
+- Selected reasoning: ${context.agentSelection.reasoning ?? "configured default"}
+- Agent routing: ${formatAgentRouting(context)}
 - Trigger tag: ${context.agentSelection.tag} (${context.agentSelection.source})
 - Repository: ${context.metadata.repositoryFullName ?? "unknown"}
 - Action: ${context.metadata.action ?? "none"}
@@ -38,7 +41,7 @@ ${context.integrationPrompt.responseInstructions} Before your final response, wr
 End your final response with exactly one of these envelopes:
 
 \`\`\`text
-SUPERSET_WORKER_DONE
+AGENT_WORKER_DONE
 task: ${context.jobId}
 summary: <one-line outcome>
 files: <comma-separated paths or none>
@@ -47,11 +50,18 @@ handoff: <next-step context or none>
 \`\`\`
 
 \`\`\`text
-SUPERSET_WORKER_BLOCKED
+AGENT_WORKER_BLOCKED
 task: ${context.jobId}
 reason: <specific blocker>
 needs: <decision, access, or dependency required>
 \`\`\`
 
 ${context.integrationPrompt.inlineContext}`;
+}
+
+function formatAgentRouting(context: WebhookContext): string {
+  const routing = context.agentSelection.routing;
+  if (!routing) return "explicit tag";
+  if (routing.fallbackReason) return `configured default (${routing.fallbackReason})`;
+  return `TypeSafe Jev option ${routing.option ?? "unknown"}, confidence ${routing.confidence ?? "unknown"}`;
 }

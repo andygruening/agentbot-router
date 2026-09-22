@@ -39,7 +39,7 @@ try {
       : "unsigned mode";
     const dryRunStatus = config.core.dryRun
       ? "dry run"
-      : `launching ${config.agents.runner} agents`;
+      : `launching ${config.agents.selection.defaultAgent} by default`;
     const paths = integrationPaths(config).join(", ");
     console.log(
       `Webhook receiver listening on http://${config.core.host}:${config.core.port} for ${paths} (${secretStatus}, ${dryRunStatus})`

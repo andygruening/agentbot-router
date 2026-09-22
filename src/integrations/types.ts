@@ -13,6 +13,8 @@ export type WebhookMetadata = {
   action?: string;
   ref?: string;
   repositoryFullName?: string;
+  cloneRepositoryFullName?: string;
+  branch?: string;
   senderLogin?: string;
 };
 
@@ -43,6 +45,7 @@ export type IntegrationPromptSection = {
 export type PreparedIntegrationRun = {
   event: IntegrationEvent;
   prompt: IntegrationPromptSection;
+  executionMetadata?: Partial<WebhookMetadata>;
 };
 
 export interface WebhookIntegration<
@@ -56,6 +59,11 @@ export interface WebhookIntegration<
   routePath(config: AppConfig): string;
   receive(config: AppConfig, input: RawWebhookInput): Promise<IntegrationEvent> | IntegrationEvent;
   selectAgent(config: AppConfig, event: IntegrationEvent): AgentSelection | undefined;
+  routeAgent?(
+    config: AppConfig,
+    event: IntegrationEvent,
+    selection: AgentSelection
+  ): Promise<AgentSelection>;
   resolveTarget(event: IntegrationEvent): IntegrationTarget<TTarget> | undefined;
   prepareRun(
     config: AppConfig,

@@ -1,2 +1,7 @@
 packages:
   - "."
+
+# Required by the official standalone pnpm executable, which installs its
+# bundled Node.js runtime through the `node` package.
+onlyBuiltDependencies:
+  - node
