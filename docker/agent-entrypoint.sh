@@ -40,7 +40,7 @@ git config user.name "local-agent-bot"
 git config user.email "local-agent-bot@users.noreply.github.com"
 
 if [ "$AGENT_CLI" = codex ]; then
-  set -- codex exec --dangerously-bypass-approvals-and-sandbox --color never
+  set -- codex exec --config 'cli_auth_credentials_store="file"' --dangerously-bypass-approvals-and-sandbox --color never
   if [ -n "${AGENT_MODEL:-}" ]; then set -- "$@" --model "$AGENT_MODEL"; fi
   if [ -n "${AGENT_REASONING:-}" ]; then set -- "$@" --config "model_reasoning_effort=\"$AGENT_REASONING\""; fi
   "$@" - < /job/prompt.md > "$result_file"
