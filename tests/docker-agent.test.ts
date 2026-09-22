@@ -20,6 +20,7 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
   assert.ok(args.includes(`LOCAL_AGENT_GID=${process.getgid?.()}`));
   assert.ok(!args.includes("--user"));
   assert.ok(args.includes("HOME=/home/agent"));
+  assert.ok(args.includes("CODEX_HOME=/home/agent/.codex"));
   assert.ok(args.includes("GITHUB_REPOSITORY=octo/example"));
   assert.ok(args.includes("GITHUB_BRANCH=feature/fix"));
   assert.ok(args.includes("AGENT_MODEL=gpt-5.5"));

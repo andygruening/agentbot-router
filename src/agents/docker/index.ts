@@ -26,6 +26,7 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
     "--volume", `${path.resolve(context.jobDir)}:/job`,
     "--volume", authMount,
     "--env", "HOME=/home/agent",
+    "--env", "CODEX_HOME=/home/agent/.codex",
     "--env", `LOCAL_AGENT_UID=${uid ?? 1000}`,
     "--env", `LOCAL_AGENT_GID=${gid ?? 1000}`,
     "--env", "GH_TOKEN", "--env", "GITHUB_TOKEN",
