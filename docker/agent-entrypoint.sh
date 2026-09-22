@@ -7,8 +7,9 @@ if [ "$(id -u)" -eq 0 ] && [ -n "${LOCAL_AGENT_UID:-}" ] && [ -n "${LOCAL_AGENT_
     claude) auth_dir=/home/agent ;;
     *) echo "Unsupported AGENT_CLI: ${AGENT_CLI:-}" >&2; exit 2 ;;
   esac
+  mkdir -p "$auth_dir"
   chown -R "$LOCAL_AGENT_UID:$LOCAL_AGENT_GID" "$auth_dir"
-  exec gosu "$LOCAL_AGENT_UID:$LOCAL_AGENT_GID" "$0" "$@"
+  exec gosu "$LOCAL_AGENT_UID:$LOCAL_AGENT_GID" env HOME=/home/agent "$0" "$@"
 fi
 
 if [ "$#" -gt 0 ]; then
@@ -40,8 +41,9 @@ git config user.name "local-agent-bot"
 git config user.email "local-agent-bot@users.noreply.github.com"
 
 if [ "$AGENT_CLI" = codex ]; then
-  if [ ! -s "$HOME/.codex/auth.json" ]; then
-    echo "Codex authentication is missing from $HOME/.codex/auth.json; rerun pnpm setup:codex as the service account." >&2
+  export CODEX_HOME=/home/agent/.codex
+  if [ ! -s "$CODEX_HOME/auth.json" ]; then
+    echo "Codex authentication is missing from $CODEX_HOME/auth.json; rerun pnpm setup:codex as the service account." >&2
     exit 10
   fi
   codex login --config 'cli_auth_credentials_store="file"' status >&2
