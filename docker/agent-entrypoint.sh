@@ -1,6 +1,16 @@
 #!/bin/sh
 set -eu
 
+if [ "$(id -u)" -eq 0 ] && [ -n "${LOCAL_AGENT_UID:-}" ] && [ -n "${LOCAL_AGENT_GID:-}" ]; then
+  case "${AGENT_CLI:-}" in
+    codex) auth_dir=/home/agent/.codex ;;
+    claude) auth_dir=/home/agent ;;
+    *) echo "Unsupported AGENT_CLI: ${AGENT_CLI:-}" >&2; exit 2 ;;
+  esac
+  chown -R "$LOCAL_AGENT_UID:$LOCAL_AGENT_GID" "$auth_dir"
+  exec gosu "$LOCAL_AGENT_UID:$LOCAL_AGENT_GID" "$0" "$@"
+fi
+
 if [ "$#" -gt 0 ]; then
   exec "$@"
 fi
