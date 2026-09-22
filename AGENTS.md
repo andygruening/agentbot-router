@@ -62,6 +62,7 @@ For documentation-only changes, inspect the changed Markdown and run code checks
 - Use Node built-ins where the project already does, including the built-in test runner.
 - Preserve the current ESM TypeScript style.
 - Add tests beside the existing `tests/*.test.ts` suites for behavioral changes.
+- Whenever supported agent models or reasoning levels change, update `EXAMPLES.md` in the same change so every documented tag remains accurate.
 - Avoid broad refactors unless they are required for the requested change.
 
 ## Pull Request Workflow
