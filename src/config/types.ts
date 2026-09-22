@@ -38,16 +38,10 @@ export type DockerAgentRunnerConfig = {
   execTimeoutMs: number;
 };
 
-export type CodexAgentRunnerConfig = {
-  defaultModel: string;
-};
-
 export type AgentConfig = {
   selection: AgentSelectionConfig;
   jev: JevAgentRouterConfig;
   docker: DockerAgentRunnerConfig;
-  claude: { model?: string };
-  codex: CodexAgentRunnerConfig;
 };
 
 export type GitHubIntegrationConfig = {

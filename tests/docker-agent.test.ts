@@ -23,8 +23,8 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
   assert.ok(args.includes("CODEX_HOME=/home/agent/.codex"));
   assert.ok(args.includes("GITHUB_REPOSITORY=octo/example"));
   assert.ok(args.includes("GITHUB_BRANCH=feature/fix"));
-  assert.ok(args.includes("AGENT_MODEL=gpt-5.5"));
-  assert.ok(args.includes("AGENT_REASONING="));
+  assert.ok(args.includes("AGENT_MODEL=gpt-5.6-sol"));
+  assert.ok(args.includes("AGENT_REASONING=low"));
   assert.ok(args.includes("GH_TOKEN"));
   assert.ok(!args.includes("CODEX_API_KEY"));
   assert.ok(!args.includes("ANTHROPIC_API_KEY"));
@@ -51,7 +51,10 @@ function buildContext(agent: "codex" | "claude", branch?: string): WebhookContex
     deliveryId: "delivery-1", jobId: "job-1", jobDir, envelopePath: `${jobDir}/webhook.json`,
     rawBodyPath: `${jobDir}/raw-body.json`, payloadPath: `${jobDir}/payload.json`, headersPath: `${jobDir}/headers.json`,
     promptPath: `${jobDir}/prompt.md`, agentOutputPath: `${jobDir}/agent-output.md`,
-    agentSelection: { agent, tag: agent, source: "text", usesDefaultAgent: false },
+    agentSelection: {
+      agent, model: "gpt-5.6-sol", reasoning: "low",
+      tag: agent, source: "text", usesDefaultAgent: false
+    },
     integrationPrompt: { savedFiles: "", guidance: "", responseInstructions: "", inlineContext: "" },
     metadata: { repositoryFullName: "octo/example", cloneRepositoryFullName: "octo/example", branch },
     payload: {}, headers: {}, rawBodyBytes: 2

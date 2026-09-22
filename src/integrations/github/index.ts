@@ -2,7 +2,7 @@ import type { AppConfig } from "../../config/index.ts";
 import type { AgentSelection } from "../../core/agent-selection.ts";
 import type { AgentJob, WorkerResult } from "../../agents/types.ts";
 import type { WebhookContext } from "../../core/webhook-context.ts";
-import { routeDefaultAgentWithJev } from "../../agents/jev.ts";
+import { routeAgentWithJev } from "../../agents/jev.ts";
 import {
   type IntegrationEvent,
   IntegrationOperationError,
@@ -95,8 +95,7 @@ export const githubIntegration: WebhookIntegration<
     event: IntegrationEvent,
     selection: AgentSelection
   ): Promise<AgentSelection> {
-    if (!selection.usesDefaultAgent) return selection;
-    return await routeDefaultAgentWithJev(
+    return await routeAgentWithJev(
       config,
       selection,
       extractAgentRequestFromGitHubPayload(event.payload, event.eventName, selection)

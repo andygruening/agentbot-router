@@ -20,7 +20,7 @@ test("readConfig applies Docker runner defaults", () => {
 test("readConfig parses Docker runner settings", () => {
   const config = readConfig({ DOCKER_COMMAND: "/usr/bin/docker", AGENT_DOCKER_IMAGE: "example/agent:v1",
     AGENT_DOCKER_PULL: "true", AGENT_EXEC_TIMEOUT_MS: "12345", CODEX_AUTH_VOLUME: "codex-login",
-    CLAUDE_AUTH_VOLUME: "claude-login", AGENT_DEFAULT: "claude", CLAUDE_MODEL: "sonnet",
+    CLAUDE_AUTH_VOLUME: "claude-login", AGENT_DEFAULT: "claude",
     TYPESAFE_API_KEY: "typesafe-key", JEV_CHOICES_PATH: "config/choices.json" });
   assert.equal(config.agents.docker.command, "/usr/bin/docker");
   assert.equal(config.agents.docker.image, "example/agent:v1");
@@ -28,7 +28,6 @@ test("readConfig parses Docker runner settings", () => {
   assert.equal(config.agents.docker.execTimeoutMs, 12345);
   assert.equal(config.agents.docker.codexAuthVolume, "codex-login");
   assert.equal(config.agents.docker.claudeAuthVolume, "claude-login");
-  assert.equal(config.agents.claude.model, "sonnet");
   assert.equal(config.agents.jev.apiKey, "typesafe-key");
   assert.match(config.agents.jev.choicesPath, /config\/choices\.json$/);
 });

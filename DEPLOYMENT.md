@@ -111,18 +111,17 @@ GITHUB_WEBHOOK_PATH=/webhooks/github
 GITHUB_WEBHOOK_SECRET=replace-with-the-generated-secret
 ALLOWED_EVENTS=issues,issue_comment,pull_request,pull_request_review,pull_request_review_comment
 
-AGENT_DEFAULT=codex
 AGENT_TAGS=codex
 GH_TOKEN=github_pat_REPLACE_ME
 
-# Optional: enables TypeSafe Jev routing for $agent.
-TYPESAFE_API_KEY=
+# Required: TypeSafe Jev completes underspecified agent tags.
+TYPESAFE_API_KEY=replace-with-your-typesafe-api-key
 JEV_CHOICES_PATH=jev-choices.json
 ```
 
 `GH_TOKEN` must be able to clone every target repository, push task branches, create pull requests, read issues and pull requests, and post comments and reactions. The receiver passes it into a job container only for that job. It is separate from the read-only GitHub App used to deliver webhooks.
 
-`TYPESAFE_API_KEY` is optional. When present, `$agent` uses TypeSafe Jev and `jev-choices.json` to select an agent, model, and reasoning level. Jev only receives choices whose agent appears in `AGENT_TAGS`. Edit that JSON file to control the available choices. If Jev is unconfigured or unavailable, `$agent` uses `AGENT_DEFAULT` and that CLI's configured model. The TypeSafe key remains in the receiver process and is never passed to job containers.
+`TYPESAFE_API_KEY` is required for any tag that omits the agent, model, or reasoning. `$agent` lets Jev choose all three values. `$codex` and `$claude` constrain the agent, and tags such as `$codex:gpt-6-astra` also constrain the model. Jev receives only matching options from `jev-choices.json`, and its highest-confidence choice is used. Fully specified tags run directly. The TypeSafe key remains in the receiver process and is never passed to job containers.
 
 Authenticate at least one agent CLI with its subscription account. These commands build the shared image and save renewable login credentials in private Docker volumes:
 
@@ -135,7 +134,7 @@ pnpm setup:claude
 exit
 ```
 
-You may run only one of those commands, but remove the other CLI from `AGENT_TAGS` and set `AGENT_DEFAULT` to the authenticated CLI. Codex uses device authentication with the ChatGPT account that owns the subscription. Claude uses Claude App browser authentication. No Codex or Claude API key is required.
+You may run only one of those commands, but remove the other CLI from `AGENT_TAGS`. Codex uses device authentication with the ChatGPT account that owns the subscription. Claude uses Claude App browser authentication. No Codex or Claude API key is required.
 
 The Codex setup forces file-backed credential storage, verifies that `auth.json` exists in the Docker volume, runs `codex login status`, and makes a small authenticated request before reporting success. If it fails, rerun `pnpm setup:codex` and complete the displayed device flow; do not continue until the request verification succeeds.
 

@@ -18,7 +18,6 @@ export type AgentRoutingDecision = {
   confidence?: number;
   probabilities?: Record<string, number>;
   decisionModel?: string;
-  fallbackReason?: string;
 };
 
 export type AgentTagCandidate = {

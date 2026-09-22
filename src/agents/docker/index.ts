@@ -15,9 +15,7 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
   const args = ["run", "--rm", "--name", `agentbot-router-${safeName(context.jobId)}`];
   const uid = process.getuid?.();
   const gid = process.getgid?.();
-  const selectedModel = context.agentSelection.model ?? (context.agentSelection.agent === "codex"
-    ? config.agents.codex.defaultModel
-    : config.agents.claude.model);
+  const selectedModel = context.agentSelection.model;
   if (config.agents.docker.pull) args.push("--pull", "always");
   const authMount = context.agentSelection.agent === "codex"
     ? `${config.agents.docker.codexAuthVolume}:/home/agent/.codex`
@@ -51,9 +49,7 @@ export async function startDockerAgentJob(config: AppConfig, context: WebhookCon
   const metadataPath = path.join(context.jobDir, "job.json");
   const args = buildDockerArgs(config, context);
   const startedAt = new Date().toISOString();
-  const selectedModel = context.agentSelection.model ?? (context.agentSelection.agent === "codex"
-    ? config.agents.codex.defaultModel
-    : config.agents.claude.model);
+  const selectedModel = context.agentSelection.model;
   const base: AgentJob = { jobId: context.jobId, status: "running", agent: context.agentSelection.agent,
     ...(selectedModel ? { model: selectedModel } : {}),
     ...(context.agentSelection.reasoning ? { reasoning: context.agentSelection.reasoning } : {}),
