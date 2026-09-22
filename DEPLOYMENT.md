@@ -255,3 +255,5 @@ Test the full flow:
 For a supplied pull request branch, changed files are committed and pushed back to that branch. Without a supplied branch, the worker creates a task branch and pull request only when files changed. A question-only task posts its response without creating a branch or pull request.
 
 The GitHub App only delivers read-only webhooks. `GH_TOKEN` performs repository cloning, pushes, pull request creation, comments, and reactions. See GitHub's documentation for [webhook permissions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/using-webhooks-with-github-apps) and [installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app).
+
+For accepted tasks, 👀 indicates active processing, 👍 indicates successful completion, and 👎 indicates a failed, timed out, or blocked task. Reaction attempts and any GitHub API errors are recorded in each job's `github-response.json`.

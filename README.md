@@ -16,6 +16,8 @@ Each Jev option has a stable ID, an agent, a model, a reasoning level, and a des
 
 On `issue_comment` events, only the new comment is scanned. Configure supported direct agents with `AGENT_TAGS`. Conflicting agent or model tags are rejected as ambiguous. Set `JEV_CHOICES_PATH` to use a different choices file.
 
+Accepted tasks use GitHub reactions as status: 👀 while processing, the configured completion reaction (👍 by default) after success, and 👎 after any failed, timed out, or blocked result. The receiver keeps 👀 in place if GitHub cannot record the terminal reaction.
+
 Each accepted job writes its webhook payload, GitHub context, prompt, process logs, output, and result under `WEBHOOK_EVENT_DIR`. The agent writes the public reply to `agent-output.md` and ends with an `AGENT_WORKER_DONE` or `AGENT_WORKER_BLOCKED` envelope. The receiver posts the output file through `gh`; the agent must not post its own GitHub response.
 
 ## Development

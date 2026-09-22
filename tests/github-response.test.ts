@@ -58,6 +58,11 @@ if (process.argv[2] === "api" && process.argv.includes("POST") && process.argv.i
   process.exit(0);
 }
 
+if (process.argv[2] === "api" && process.argv.includes("POST") && process.argv.includes("content=-1")) {
+  process.stdout.write(JSON.stringify({ id: 791 }));
+  process.exit(0);
+}
+
 if (process.argv[2] === "issue" && process.argv[3] === "comment") {
   process.stdout.write("commented");
   process.exit(0);
@@ -146,6 +151,36 @@ test("buildResultComment uses full agent-output markdown exactly", async () => {
     }),
     "terminal output before envelope\nAGENT_WORKER_BLOCKED\nreason: missing token"
   );
+});
+
+test("failed jobs replace the processing reaction with thumbs-down", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-failed-"));
+  const fakeGhPath = path.join(tempDir, "fake-gh.mjs");
+  const argsPath = path.join(tempDir, "gh-args.jsonl");
+  await writeFile(fakeGhPath, `#!/usr/bin/env node
+import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(argsPath)}, JSON.stringify(process.argv.slice(2)) + "\\n");
+if (process.argv[2] === "auth") process.exit(0);
+if (process.argv.includes("content=eyes")) { process.stdout.write('{"id":801}'); process.exit(0); }
+if (process.argv.includes("content=-1")) { process.stdout.write('{"id":802}'); process.exit(0); }
+if (process.argv[2] === "issue") process.exit(0);
+if (process.argv.includes("DELETE")) process.exit(0);
+process.exit(1);
+`);
+  await chmod(fakeGhPath, 0o755);
+  const config = readConfig({ GITHUB_COMMAND: fakeGhPath });
+  const state = await beginGitHubResponse(config, tempDir, {
+    repo: "octo/example", issueNumber: 123,
+    reactionTarget: { kind: "issue-comment", apiPath: "repos/octo/example/issues/comments/456/reactions" }
+  });
+  const job = { ...buildJob(tempDir), status: "failed" as const, error: "clone failed" };
+
+  const completed = await completeGitHubResponse(config, state, job, undefined);
+  const args = await readFile(argsPath, "utf8");
+
+  assert.equal(completed?.completionReaction?.content, "-1");
+  assert.equal(completed?.processingReactionRemoved, true);
+  assert.match(args, /"content=-1"/);
 });
 
 test("buildResultComment rejects completed worker results without agent-output markdown", async () => {

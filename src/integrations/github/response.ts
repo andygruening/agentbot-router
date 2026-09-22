@@ -224,27 +224,35 @@ export async function completeGitHubResponse(
     });
   }
 
-  if (commentBody !== undefined && shouldAddCompletionReaction(job, result)) {
-    try {
-      state.completionReaction = await createGitHubReaction(
-        config,
-        state.target.reactionTarget.apiPath,
-        config.integrations.github.completionReaction,
-        "add_completion_reaction"
-      );
-      logGitHubResponse("GitHub completion reaction added:", {
-        target: state.target,
-        reaction: state.completionReaction
-      });
-    } catch (error: unknown) {
-      state.errors.push({
-        step: "add_completion_reaction",
-        message: errorMessage(error)
-      });
-    }
+  const terminalReaction = isSuccessfulCompletion(job, result) && state.errors.length === 0
+    ? config.integrations.github.completionReaction
+    : "-1";
+  if (commentBody === undefined && state.errors.length === 0) {
+    state.errors.push({
+      step: "terminal_status",
+      message: "Agent output was unavailable"
+    });
+  }
+  try {
+    state.completionReaction = await createGitHubReaction(
+      config,
+      state.target.reactionTarget.apiPath,
+      terminalReaction,
+      "add_completion_reaction"
+    );
+    logGitHubResponse("GitHub terminal reaction added:", {
+      target: state.target,
+      reaction: state.completionReaction
+    });
+  } catch (error: unknown) {
+    state.errors.push({
+      step: "add_completion_reaction",
+      message: errorMessage(error)
+    });
   }
 
-  if (state.processingReaction) {
+  // Keep the processing marker when GitHub could not record a terminal state.
+  if (state.processingReaction && state.completionReaction) {
     try {
       const deleteResult = await runGh(config.integrations.github, [
         "api",
@@ -356,7 +364,7 @@ async function writeGitHubResponseState(state: GitHubResponseState): Promise<voi
   await writeFile(state.responsePath, `${JSON.stringify(state, null, 2)}\n`);
 }
 
-function shouldAddCompletionReaction(job: AgentJob, result: WorkerResult | undefined): boolean {
+function isSuccessfulCompletion(job: AgentJob, result: WorkerResult | undefined): boolean {
   return result?.status === "completed" || job.status === "completed";
 }
 
