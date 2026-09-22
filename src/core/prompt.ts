@@ -20,8 +20,8 @@ Webhook metadata:
 - Task ID: ${context.jobId}
 - Agent runner: ${context.agentRunnerName}
 - Selected agent: ${context.agentSelection.agent}
-- Selected model: ${context.agentSelection.model ?? "configured default"}
-- Selected reasoning: ${context.agentSelection.reasoning ?? "configured default"}
+- Selected model: ${context.agentSelection.model ?? "not selected"}
+- Selected reasoning: ${context.agentSelection.reasoning ?? "model default"}
 - Agent routing: ${formatAgentRouting(context)}
 - Trigger tag: ${context.agentSelection.tag} (${context.agentSelection.source})
 - Repository: ${context.metadata.repositoryFullName ?? "unknown"}
@@ -62,6 +62,5 @@ ${context.integrationPrompt.inlineContext}`;
 function formatAgentRouting(context: WebhookContext): string {
   const routing = context.agentSelection.routing;
   if (!routing) return "explicit tag";
-  if (routing.fallbackReason) return `configured default (${routing.fallbackReason})`;
   return `TypeSafe Jev option ${routing.option ?? "unknown"}, confidence ${routing.confidence ?? "unknown"}`;
 }

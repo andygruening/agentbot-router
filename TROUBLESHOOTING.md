@@ -39,7 +39,7 @@ Useful files within a job directory include:
 
 - `webhook.json`: received delivery and metadata.
 - `github-context.json` and `github-context.md`: fetched issue or pull request context.
-- `agent-routing.json`: Jev choice and confidence when `$agent` was used.
+- `agent-routing.json`: Jev choice and confidence when an incomplete agent tag was used.
 - `prompt.md`: instructions passed to the agent.
 - `docker.stdout.log` and `docker.stderr.log`: container output and errors.
 - `job.json` and `agent-result.json`: final state and worker result.
@@ -178,10 +178,13 @@ Jev only receives choices for agents listed in `AGENT_TAGS`. If only Codex is au
 
 ```dotenv
 AGENT_TAGS=codex
-AGENT_DEFAULT=codex
 ```
 
 Restart the receiver after changing `.env`. Inspect `agent-routing.json` in the job directory to see the options, winner, and confidence. Direct `$claude` or `$codex` tags must also name an agent included in `AGENT_TAGS`.
+
+## An incomplete agent tag does not start a task
+
+`$agent`, `$codex`, `$claude`, and model-only tags require TypeSafe Jev to fill their missing values. Confirm that `TYPESAFE_API_KEY` is set in `/srv/agentbot-router/.env`, `JEV_CHOICES_PATH` points to the current choices file, and the requested agent appears in `AGENT_TAGS`. A model named in a tag must have at least one matching option in `jev-choices.json`. Routing errors do not fall back to CLI defaults.
 
 ## Status reaction or final comment is missing
 

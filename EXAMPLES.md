@@ -2,19 +2,19 @@
 
 Use these tags in a GitHub issue, pull request, or new comment. Put one agent tag in the request. On `issue_comment` events, the receiver scans only the new comment.
 
-The tables list every model and reasoning combination bundled in `jev-choices.json`, plus the model-default forms supported by direct tags. A direct tag only works when its CLI is listed in `AGENT_TAGS` and authenticated on the server.
+The tables list every model and reasoning combination bundled in `jev-choices.json`, plus model-constrained forms that let Jev select reasoning. A direct tag only works when its CLI is listed in `AGENT_TAGS` and authenticated on the server.
 
-## Automatic and CLI defaults
+## Automatic and incomplete tags
 
 | Tag | Example prompt |
 | --- | --- |
 | `$agent` | `$agent Investigate this failure, choose the best configured agent and model, and implement the fix.` |
-| `$codex` | `$codex Review this issue and handle it with the configured Codex defaults.` |
-| `$claude` | `$claude Review this issue and handle it with the configured Claude defaults.` |
+| `$codex` | `$codex Review this issue and let Jev choose the best Codex model and reasoning.` |
+| `$claude` | `$claude Review this issue and let Jev choose the best Claude model and reasoning.` |
 
-`$agent` uses TypeSafe Jev when `TYPESAFE_API_KEY` is configured. Jev chooses only among agents listed in `AGENT_TAGS`; otherwise the receiver uses `AGENT_DEFAULT` with that CLI's configured model.
+`$agent` lets TypeSafe Jev choose among every agent listed in `AGENT_TAGS`. `TYPESAFE_API_KEY` is required for this and every other incomplete tag.
 
-A model tag without a reasoning suffix uses that model's configured or CLI default effort. Use this form when you want a specific model and do not need to control reasoning depth.
+A model tag without a reasoning suffix lets Jev choose among the reasoning levels available for that agent and model. Use this form when you want a specific model and want Jev to match its effort to the request.
 
 ## Codex tags
 
@@ -95,7 +95,8 @@ Claude Fable, Opus, and Sonnet support `low`, `medium`, `high`, `xhigh`, `max`, 
 
 - Use only one agent/model/reasoning selection in a request. Conflicting tags are rejected as ambiguous.
 - The form is `$codex:<model>:<reasoning>` or `$claude:<model>:<reasoning>`.
-- Omit the reasoning suffix to use the selected model's default effort.
-- Omit both model and reasoning to use the CLI defaults.
-- `$agent` does not accept model or reasoning suffixes; it delegates the choice to Jev or falls back to `AGENT_DEFAULT`.
+- Omit the reasoning suffix to let Jev choose reasoning for the selected agent and model.
+- Omit both model and reasoning to let Jev choose both values for the selected agent.
+- `$agent` does not accept model or reasoning suffixes; it delegates the agent, model, and reasoning choice to Jev.
+- Fully specified agent, model, and reasoning tags run directly without calling Jev.
 - Labels can trigger an agent, but put the complete task instructions in the issue, pull request, or comment body.

@@ -238,7 +238,7 @@ async function handleRequest(
     agent: agentSelection.agent,
     model: agentSelection.model,
     reasoning: agentSelection.reasoning,
-    agentRouting: agentSelection.usesDefaultAgent ? "pending" : "explicit"
+    agentRouting: agentSelection.model && agentSelection.reasoning ? "explicit" : "pending"
   });
   void processAcceptedDelivery(config, launchAgent, integration, event, target, context).catch(
     async (error: unknown) => {

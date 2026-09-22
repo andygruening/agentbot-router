@@ -57,7 +57,7 @@ test("webhook endpoint persists payload and launches a Codex agent", async () =>
   try {
     const payload = {
       action: "opened",
-      comment: { body: "$codex please handle this" },
+      comment: { body: "$codex:gpt-5.6-sol:low please handle this" },
       issue: { number: 123 },
       repository: { full_name: "octo/example" },
       sender: { login: "octocat" }
@@ -124,7 +124,7 @@ test("webhook endpoint persists payload and launches a Codex agent", async () =>
   }
 });
 
-test("$claude selects the Claude runner for a tagged delivery", async () => {
+test("a complete $claude tag selects the Claude runner", async () => {
   const eventDir = await mkdtemp(path.join(tmpdir(), "webhook-claude-"));
   const config = readConfig({
     AGENT_TAGS: "codex,claude",
@@ -165,7 +165,7 @@ test("$claude selects the Claude runner for a tagged delivery", async () => {
   try {
     const rawBody = Buffer.from(JSON.stringify({
       action: "created",
-      comment: { body: "$claude investigate" },
+      comment: { body: "$claude:sonnet:medium investigate" },
       issue: { number: 123 },
       pull_request: {
         number: 123,

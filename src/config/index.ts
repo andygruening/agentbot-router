@@ -8,7 +8,6 @@ export type {
   AgentConfig,
   AgentSelectionConfig,
   AppConfig,
-  CodexAgentRunnerConfig,
   CoreConfig,
   GitHubIntegrationConfig,
   GitHubReactionContent,
@@ -18,10 +17,6 @@ export type {
 } from "./types.ts";
 
 export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const codexDefaultModel = readString(
-    env.CODEX_DEFAULT_MODEL ?? env.CODEX_MODEL,
-    "gpt-5.5"
-  );
   const defaultAgent = readCliName(env.AGENT_DEFAULT, "AGENT_DEFAULT", "codex");
   const agentTags = readStringList(env.AGENT_TAGS, "codex")
     .map((tag) => readCliName(tag, "AGENT_TAGS", "codex"));
@@ -53,12 +48,6 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
         codexAuthVolume: readString(env.CODEX_AUTH_VOLUME, "agentbot-router-codex-auth"),
         claudeAuthVolume: readString(env.CLAUDE_AUTH_VOLUME, "agentbot-router-claude-auth"),
         execTimeoutMs: readPositiveInt(env.AGENT_EXEC_TIMEOUT_MS, 3_600_000, "AGENT_EXEC_TIMEOUT_MS")
-      },
-      claude: {
-        model: readOptionalString(env.CLAUDE_MODEL)
-      },
-      codex: {
-        defaultModel: codexDefaultModel
       }
     },
     integrations: {

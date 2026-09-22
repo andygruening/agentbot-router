@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import {
   loadJevChoices,
-  routeDefaultAgentWithJev,
+  routeAgentWithJev,
   type JevDecider
 } from "../src/agents/jev.ts";
 import { readConfig } from "../src/config/index.ts";
@@ -41,7 +41,7 @@ test("Jev routes $agent to the selected model and reasoning", async () => {
     JEV_CHOICES_PATH: choicesPath
   });
 
-  const selected = await routeDefaultAgentWithJev(
+  const selected = await routeAgentWithJev(
     config,
     fallback,
     "Investigate the race condition",
@@ -63,22 +63,43 @@ test("Jev routes $agent to the selected model and reasoning", async () => {
   });
 });
 
-test("Jev falls back without an API key", async () => {
-  const selected = await routeDefaultAgentWithJev(readConfig({}), fallback, "Fix this");
-  assert.deepEqual(selected, {
-    ...fallback,
-    routing: { provider: "typesafe-jev", fallbackReason: "not_configured" }
-  });
+test("Jev routing requires an API key", async () => {
+  await assert.rejects(
+    () => routeAgentWithJev(readConfig({}), fallback, "Fix this"),
+    /TYPESAFE_API_KEY is required/
+  );
+});
+
+test("fully specified tags are validated without calling Jev", async () => {
+  const choicesPath = await writeChoices();
+  const selection: AgentSelection = {
+    agent: "codex",
+    model: "gpt-5.6-sol",
+    reasoning: "low",
+    tag: "codex:gpt-5.6-sol:low",
+    source: "text",
+    usesDefaultAgent: false
+  };
+  const config = readConfig({ AGENT_TAGS: "codex", JEV_CHOICES_PATH: choicesPath });
+  const decide: JevDecider = async () => {
+    throw new Error("Jev should not be called");
+  };
+
+  assert.deepEqual(await routeAgentWithJev(config, selection, "Fix this", decide), selection);
+  await assert.rejects(
+    () => routeAgentWithJev(config, { ...selection, reasoning: "max" }, "Fix this", decide),
+    /do not contain an option matching the agent tag/
+  );
 });
 
 test("Jev excludes choices for agents that are not configured", async () => {
   const choicesPath = await writeChoices();
   const decide: JevDecider = async (_message, _question, descriptions) => {
-    assert.deepEqual(Object.keys(descriptions), ["codex_low"]);
+    assert.deepEqual(Object.keys(descriptions), ["codex_low", "codex_high"]);
     return {
       option: "codex_low",
       confidence: 1,
-      probabilities: { codex_low: 1 },
+      probabilities: { codex_low: 1, codex_high: 0 },
       model: "jev-test"
     };
   };
@@ -88,11 +109,73 @@ test("Jev excludes choices for agents that are not configured", async () => {
     JEV_CHOICES_PATH: choicesPath
   });
 
-  const selected = await routeDefaultAgentWithJev(config, fallback, "Fix this", decide);
+  const selected = await routeAgentWithJev(config, fallback, "Fix this", decide);
 
   assert.equal(selected.agent, "codex");
   assert.equal(selected.model, "gpt-5.6-sol");
   assert.equal(selected.reasoning, "low");
+});
+
+test("Jev selects model and reasoning within a directly tagged agent", async () => {
+  const choicesPath = await writeChoices();
+  const selection: AgentSelection = {
+    agent: "codex",
+    tag: "codex",
+    source: "text",
+    usesDefaultAgent: false
+  };
+  const decide: JevDecider = async (_message, _question, descriptions) => {
+    assert.deepEqual(Object.keys(descriptions), ["codex_low", "codex_high"]);
+    return {
+      option: "codex_high",
+      confidence: 0.75,
+      probabilities: { codex_low: 0.25, codex_high: 0.75 },
+      model: "jev-test"
+    };
+  };
+  const config = readConfig({
+    AGENT_TAGS: "codex,claude",
+    TYPESAFE_API_KEY: "typesafe-test-key",
+    JEV_CHOICES_PATH: choicesPath
+  });
+
+  const selected = await routeAgentWithJev(config, selection, "Investigate this", decide);
+
+  assert.equal(selected.agent, "codex");
+  assert.equal(selected.model, "gpt-5.6-sol");
+  assert.equal(selected.reasoning, "high");
+});
+
+test("Jev fills only the missing reasoning for a selected agent and model", async () => {
+  const choicesPath = await writeChoices();
+  const selection: AgentSelection = {
+    agent: "codex",
+    model: "gpt-5.6-sol",
+    tag: "codex:gpt-5.6-sol",
+    source: "text",
+    usesDefaultAgent: false
+  };
+  const decide: JevDecider = async (_message, _question, descriptions) => {
+    assert.deepEqual(Object.keys(descriptions), ["codex_low", "codex_high"]);
+    return {
+      option: "codex_low",
+      confidence: 0.8,
+      probabilities: { codex_low: 0.2, codex_high: 0.8 },
+      model: "jev-test"
+    };
+  };
+  const config = readConfig({
+    AGENT_TAGS: "codex,claude",
+    TYPESAFE_API_KEY: "typesafe-test-key",
+    JEV_CHOICES_PATH: choicesPath
+  });
+
+  const selected = await routeAgentWithJev(config, selection, "Debug this", decide);
+
+  assert.equal(selected.agent, "codex");
+  assert.equal(selected.model, "gpt-5.6-sol");
+  assert.equal(selected.reasoning, "high");
+  assert.equal(selected.routing?.option, "codex_high");
 });
 
 test("Jev choices reject unsupported reasoning", async () => {
@@ -131,6 +214,9 @@ async function writeChoices(): Promise<string> {
     options: {
       codex_low: {
         agent: "codex", model: "gpt-5.6-sol", reasoning: "low", description: "Routine work"
+      },
+      codex_high: {
+        agent: "codex", model: "gpt-5.6-sol", reasoning: "high", description: "Difficult work"
       },
       claude_high: {
         agent: "claude", model: "fable-5.1", reasoning: "high", description: "Complex analysis"
