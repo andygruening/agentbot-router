@@ -300,7 +300,7 @@ export async function buildResultComment(
   if (result) {
     const output = await readAgentOutput(job.agentOutputPath);
     if (output !== undefined && output.trim()) {
-      return output;
+      return appendProcessingSignature(output, job);
     }
 
     throw new AgentOutputError(
@@ -309,7 +309,31 @@ export async function buildResultComment(
     );
   }
 
-  return job.error ?? "Agent did not report an output.";
+  return appendProcessingSignature(job.error ?? "Agent did not report an output.", job);
+}
+
+function appendProcessingSignature(body: string, job: AgentJob): string {
+  const parts = [formatAgentName(job.agent)];
+  if (job.model) parts.push(formatModelName(job.model));
+  if (job.reasoning) parts.push(`${formatWords(job.reasoning)} reasoning`);
+  return `${body.trimEnd()}\n\n---\n\n*Processed by ${parts.join(" · ")}*`;
+}
+
+function formatAgentName(agent: string): string {
+  if (agent.toLowerCase() === "codex") return "Codex";
+  if (agent.toLowerCase() === "claude") return "Claude";
+  return formatWords(agent);
+}
+
+function formatModelName(model: string): string {
+  return model
+    .split("-")
+    .map((part) => part.toLowerCase() === "gpt" ? "GPT" : formatWords(part))
+    .join(" ");
+}
+
+function formatWords(value: string): string {
+  return value.replaceAll("_", " ").replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
 
 async function assertGhAuthenticated(config: AppConfig): Promise<void> {

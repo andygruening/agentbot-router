@@ -127,7 +127,10 @@ process.exit(1);
     assert.match(args, /"content=\+1"/);
     assert.match(args, new RegExp('"issue","comment","123","--repo","octo/example"'));
     assert.match(args, /"DELETE"/);
-    assert.equal(commentBody, "agent terminal output\nwith all lines");
+    assert.equal(
+      commentBody,
+      "agent terminal output\nwith all lines\n\n---\n\n*Processed by Codex*"
+    );
   } finally {
     console.log = originalLog;
   }
@@ -136,6 +139,8 @@ process.exit(1);
 test("buildResultComment uses full agent-output markdown exactly", async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-comment-"));
   const job = buildJob(tempDir);
+  job.model = "gpt-5.6-sol";
+  job.reasoning = "low";
   await writeFile(
     job.agentOutputPath,
     "terminal output before envelope\nAGENT_WORKER_BLOCKED\nreason: missing token"
@@ -149,7 +154,24 @@ test("buildResultComment uses full agent-output markdown exactly", async () => {
       reason: "missing token",
       needs: "configure auth"
     }),
-    "terminal output before envelope\nAGENT_WORKER_BLOCKED\nreason: missing token"
+    "terminal output before envelope\nAGENT_WORKER_BLOCKED\nreason: missing token" +
+      "\n\n---\n\n*Processed by Codex · GPT 5.6 Sol · Low reasoning*"
+  );
+});
+
+test("buildResultComment formats Claude model signatures", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-claude-signature-"));
+  const job = {
+    ...buildJob(tempDir),
+    agent: "claude",
+    model: "fable-5.1",
+    reasoning: "high"
+  };
+  await writeFile(job.agentOutputPath, "Completed the review.\n");
+
+  assert.equal(
+    await buildResultComment(job, buildWorkerResult()),
+    "Completed the review.\n\n---\n\n*Processed by Claude · Fable 5.1 · High reasoning*"
   );
 });
 
