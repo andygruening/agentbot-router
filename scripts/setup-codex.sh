@@ -8,5 +8,9 @@ uid=$(id -u)
 gid=$(id -g)
 docker run --rm --volume "$volume:/auth" alpine chown -R "$uid:$gid" /auth
 docker run --rm -it --user "$uid:$gid" --env HOME=/home/agent \
-  --volume "$volume:/home/agent/.codex" "$image" codex login --device-auth
+  --volume "$volume:/home/agent/.codex" "$image" \
+  codex login --config 'cli_auth_credentials_store="file"' --device-auth
+docker run --rm --user "$uid:$gid" --env HOME=/home/agent \
+  --volume "$volume:/home/agent/.codex" "$image" sh -c \
+  'test -s "$HOME/.codex/auth.json" && codex login --config '\''cli_auth_credentials_store="file"'\'' status'
 printf '\nCodex subscription authentication saved in Docker volume %s.\n' "$volume"
