@@ -137,7 +137,7 @@ exit
 
 You may run only one of those commands, but remove the other CLI from `AGENT_TAGS` and set `AGENT_DEFAULT` to the authenticated CLI. Codex uses device authentication with the ChatGPT account that owns the subscription. Claude uses Claude App browser authentication. No Codex or Claude API key is required.
 
-The Codex setup forces file-backed credential storage, verifies that `auth.json` exists in the Docker volume, and runs `codex login status` before reporting success. If it fails, rerun `pnpm setup:codex` and complete the displayed device flow; do not continue until the command prints a successful login status.
+The Codex setup forces file-backed credential storage, verifies that `auth.json` exists in the Docker volume, runs `codex login status`, and makes a small authenticated request before reporting success. If it fails, rerun `pnpm setup:codex` and complete the displayed device flow; do not continue until the request verification succeeds.
 
 Run these setup commands as `agentbot`. At job startup, the container assigns the selected authentication volume to the service account and then drops root before launching Codex or Claude. This automatically migrates volumes created by older root based versions. The agent process uses the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
 
