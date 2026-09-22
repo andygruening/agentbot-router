@@ -80,11 +80,19 @@ test("agent tags select model and reasoning overrides", () => {
     selectAgentFromPayload({ comment: { body: "Please handle this with $codex:gpt-5.6-sol:low." } }, config)?.reasoning,
     "low"
   );
+  assert.equal(
+    selectAgentFromPayload({ comment: { body: "$codex:gpt-6-astra:ultra" } }, config)?.reasoning,
+    "ultra"
+  );
+  assert.equal(
+    selectAgentFromPayload({ comment: { body: "$claude:opus:ultracode" } }, config)?.reasoning,
+    "ultracode"
+  );
 });
 
 test("agent tags reject invalid models and unsupported reasoning", () => {
   const config = readConfig({ AGENT_TAGS: "codex,claude" }).agents.selection;
-  for (const tag of ["$codex::low", "$codex:gpt-5.6-sol:max", "$claude:fable-5.1:minimal"]) {
+  for (const tag of ["$codex::low", "$codex:gpt-5.6-sol:minimal", "$claude:fable:minimal"]) {
     assert.throws(
       () => selectAgentFromPayload({ comment: { body: tag } }, config),
       InvalidAgentTagError

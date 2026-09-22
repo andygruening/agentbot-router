@@ -1,29 +1,256 @@
 {
   "question": "Which agent, model, and reasoning level should handle this user request?",
   "options": {
+    "codex_astra_low": {
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "reasoning": "low",
+      "description": "OpenAI's most capable model for complex work across code, apps, research, computer use, and judgment. Use for short, clear, latency-sensitive tasks with limited ambiguity."
+    },
+    "codex_astra_medium": {
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "reasoning": "medium",
+      "description": "OpenAI's most capable model for complex work across code, apps, research, computer use, and judgment. Use for routine implementation and analysis that need a balanced amount of reasoning."
+    },
+    "codex_astra_high": {
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "reasoning": "high",
+      "description": "OpenAI's most capable model for complex work across code, apps, research, computer use, and judgment. Use for difficult debugging, substantial implementation, and careful multi-step analysis."
+    },
+    "codex_astra_xhigh": {
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "reasoning": "xhigh",
+      "description": "OpenAI's most capable model for complex work across code, apps, research, computer use, and judgment. Use for highly complex work where deeper reasoning is worth additional time and tokens."
+    },
+    "codex_astra_max": {
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "reasoning": "max",
+      "description": "OpenAI's most capable model for complex work across code, apps, research, computer use, and judgment. Use for the hardest high-value problems where maximum reasoning depth is justified."
+    },
+    "codex_astra_ultra": {
+      "agent": "codex",
+      "model": "gpt-6-astra",
+      "reasoning": "ultra",
+      "description": "OpenAI's most capable model for complex work across code, apps, research, computer use, and judgment. Use for large, decomposable tasks that benefit from maximum reasoning and automatic delegation."
+    },
     "codex_sol_low": {
       "agent": "codex",
       "model": "gpt-5.6-sol",
       "reasoning": "low",
-      "description": "Use for clear questions, small fixes, focused edits, and routine repository tasks where speed matters."
+      "description": "The most capable GPT-5.6 model for complex coding, research, computer use, cybersecurity, and polished professional work. Use for short, clear, latency-sensitive tasks with limited ambiguity."
+    },
+    "codex_sol_medium": {
+      "agent": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning": "medium",
+      "description": "The most capable GPT-5.6 model for complex coding, research, computer use, cybersecurity, and polished professional work. Use for routine implementation and analysis that need a balanced amount of reasoning."
     },
     "codex_sol_high": {
       "agent": "codex",
       "model": "gpt-5.6-sol",
       "reasoning": "high",
-      "description": "Use for difficult debugging, architecture work, broad refactors, or tasks requiring careful multi-step analysis."
+      "description": "The most capable GPT-5.6 model for complex coding, research, computer use, cybersecurity, and polished professional work. Use for difficult debugging, substantial implementation, and careful multi-step analysis."
+    },
+    "codex_sol_xhigh": {
+      "agent": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "description": "The most capable GPT-5.6 model for complex coding, research, computer use, cybersecurity, and polished professional work. Use for highly complex work where deeper reasoning is worth additional time and tokens."
+    },
+    "codex_sol_max": {
+      "agent": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning": "max",
+      "description": "The most capable GPT-5.6 model for complex coding, research, computer use, cybersecurity, and polished professional work. Use for the hardest high-value problems where maximum reasoning depth is justified."
+    },
+    "codex_sol_ultra": {
+      "agent": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning": "ultra",
+      "description": "The most capable GPT-5.6 model for complex coding, research, computer use, cybersecurity, and polished professional work. Use for large, decomposable tasks that benefit from maximum reasoning and automatic delegation."
+    },
+    "codex_terra_low": {
+      "agent": "codex",
+      "model": "gpt-5.6-terra",
+      "reasoning": "low",
+      "description": "The balanced GPT-5.6 model for everyday coding, tool use, review, and professional work. Use for short, clear, latency-sensitive tasks with limited ambiguity."
+    },
+    "codex_terra_medium": {
+      "agent": "codex",
+      "model": "gpt-5.6-terra",
+      "reasoning": "medium",
+      "description": "The balanced GPT-5.6 model for everyday coding, tool use, review, and professional work. Use for routine implementation and analysis that need a balanced amount of reasoning."
+    },
+    "codex_terra_high": {
+      "agent": "codex",
+      "model": "gpt-5.6-terra",
+      "reasoning": "high",
+      "description": "The balanced GPT-5.6 model for everyday coding, tool use, review, and professional work. Use for difficult debugging, substantial implementation, and careful multi-step analysis."
+    },
+    "codex_terra_xhigh": {
+      "agent": "codex",
+      "model": "gpt-5.6-terra",
+      "reasoning": "xhigh",
+      "description": "The balanced GPT-5.6 model for everyday coding, tool use, review, and professional work. Use for highly complex work where deeper reasoning is worth additional time and tokens."
+    },
+    "codex_terra_max": {
+      "agent": "codex",
+      "model": "gpt-5.6-terra",
+      "reasoning": "max",
+      "description": "The balanced GPT-5.6 model for everyday coding, tool use, review, and professional work. Use for the hardest high-value problems where maximum reasoning depth is justified."
+    },
+    "codex_terra_ultra": {
+      "agent": "codex",
+      "model": "gpt-5.6-terra",
+      "reasoning": "ultra",
+      "description": "The balanced GPT-5.6 model for everyday coding, tool use, review, and professional work. Use for large, decomposable tasks that benefit from maximum reasoning and automatic delegation."
+    },
+    "codex_luna_low": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "reasoning": "low",
+      "description": "The fastest GPT-5.6 model for focused, cost-sensitive, and high-volume work. Use for short, clear, latency-sensitive tasks with limited ambiguity."
+    },
+    "codex_luna_medium": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "reasoning": "medium",
+      "description": "The fastest GPT-5.6 model for focused, cost-sensitive, and high-volume work. Use for routine implementation and analysis that need a balanced amount of reasoning."
+    },
+    "codex_luna_high": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "reasoning": "high",
+      "description": "The fastest GPT-5.6 model for focused, cost-sensitive, and high-volume work. Use for difficult debugging, substantial implementation, and careful multi-step analysis."
+    },
+    "codex_luna_xhigh": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "reasoning": "xhigh",
+      "description": "The fastest GPT-5.6 model for focused, cost-sensitive, and high-volume work. Use for highly complex work where deeper reasoning is worth additional time and tokens."
+    },
+    "codex_luna_max": {
+      "agent": "codex",
+      "model": "gpt-5.6-luna",
+      "reasoning": "max",
+      "description": "The fastest GPT-5.6 model for focused, cost-sensitive, and high-volume work. Use for the hardest high-value problems where maximum reasoning depth is justified."
     },
     "claude_fable_low": {
       "agent": "claude",
-      "model": "fable-5.1",
+      "model": "fable",
       "reasoning": "low",
-      "description": "Use for focused writing, explanation, review, and straightforward implementation tasks suited to Claude."
+      "description": "Claude's most capable alias for the hardest, longest-running, ambiguous, and investigative tasks. Use for short, clear, latency-sensitive tasks with limited ambiguity."
+    },
+    "claude_fable_medium": {
+      "agent": "claude",
+      "model": "fable",
+      "reasoning": "medium",
+      "description": "Claude's most capable alias for the hardest, longest-running, ambiguous, and investigative tasks. Use for routine implementation and analysis that need a balanced amount of reasoning."
     },
     "claude_fable_high": {
       "agent": "claude",
-      "model": "fable-5.1",
+      "model": "fable",
       "reasoning": "high",
-      "description": "Use for complex analysis, nuanced reviews, long-context reasoning, and substantial implementation tasks suited to Claude."
+      "description": "Claude's most capable alias for the hardest, longest-running, ambiguous, and investigative tasks. Use for difficult debugging, substantial implementation, and careful multi-step analysis."
+    },
+    "claude_fable_xhigh": {
+      "agent": "claude",
+      "model": "fable",
+      "reasoning": "xhigh",
+      "description": "Claude's most capable alias for the hardest, longest-running, ambiguous, and investigative tasks. Use for highly complex work where deeper reasoning is worth additional time and tokens."
+    },
+    "claude_fable_max": {
+      "agent": "claude",
+      "model": "fable",
+      "reasoning": "max",
+      "description": "Claude's most capable alias for the hardest, longest-running, ambiguous, and investigative tasks. Use for the hardest high-value problems where maximum reasoning depth is justified."
+    },
+    "claude_fable_ultracode": {
+      "agent": "claude",
+      "model": "fable",
+      "reasoning": "ultracode",
+      "description": "Claude's most capable alias for the hardest, longest-running, ambiguous, and investigative tasks. Use for large, decomposable tasks that benefit from xhigh reasoning and Claude Code workflow orchestration."
+    },
+    "claude_opus_low": {
+      "agent": "claude",
+      "model": "opus",
+      "reasoning": "low",
+      "description": "Claude's complex-reasoning model for demanding coding, architecture, analysis, and agentic work. Use for short, clear, latency-sensitive tasks with limited ambiguity."
+    },
+    "claude_opus_medium": {
+      "agent": "claude",
+      "model": "opus",
+      "reasoning": "medium",
+      "description": "Claude's complex-reasoning model for demanding coding, architecture, analysis, and agentic work. Use for routine implementation and analysis that need a balanced amount of reasoning."
+    },
+    "claude_opus_high": {
+      "agent": "claude",
+      "model": "opus",
+      "reasoning": "high",
+      "description": "Claude's complex-reasoning model for demanding coding, architecture, analysis, and agentic work. Use for difficult debugging, substantial implementation, and careful multi-step analysis."
+    },
+    "claude_opus_xhigh": {
+      "agent": "claude",
+      "model": "opus",
+      "reasoning": "xhigh",
+      "description": "Claude's complex-reasoning model for demanding coding, architecture, analysis, and agentic work. Use for highly complex work where deeper reasoning is worth additional time and tokens."
+    },
+    "claude_opus_max": {
+      "agent": "claude",
+      "model": "opus",
+      "reasoning": "max",
+      "description": "Claude's complex-reasoning model for demanding coding, architecture, analysis, and agentic work. Use for the hardest high-value problems where maximum reasoning depth is justified."
+    },
+    "claude_opus_ultracode": {
+      "agent": "claude",
+      "model": "opus",
+      "reasoning": "ultracode",
+      "description": "Claude's complex-reasoning model for demanding coding, architecture, analysis, and agentic work. Use for large, decomposable tasks that benefit from xhigh reasoning and Claude Code workflow orchestration."
+    },
+    "claude_sonnet_low": {
+      "agent": "claude",
+      "model": "sonnet",
+      "reasoning": "low",
+      "description": "Claude's daily coding model for strong implementation, review, writing, and balanced tool use. Use for short, clear, latency-sensitive tasks with limited ambiguity."
+    },
+    "claude_sonnet_medium": {
+      "agent": "claude",
+      "model": "sonnet",
+      "reasoning": "medium",
+      "description": "Claude's daily coding model for strong implementation, review, writing, and balanced tool use. Use for routine implementation and analysis that need a balanced amount of reasoning."
+    },
+    "claude_sonnet_high": {
+      "agent": "claude",
+      "model": "sonnet",
+      "reasoning": "high",
+      "description": "Claude's daily coding model for strong implementation, review, writing, and balanced tool use. Use for difficult debugging, substantial implementation, and careful multi-step analysis."
+    },
+    "claude_sonnet_xhigh": {
+      "agent": "claude",
+      "model": "sonnet",
+      "reasoning": "xhigh",
+      "description": "Claude's daily coding model for strong implementation, review, writing, and balanced tool use. Use for highly complex work where deeper reasoning is worth additional time and tokens."
+    },
+    "claude_sonnet_max": {
+      "agent": "claude",
+      "model": "sonnet",
+      "reasoning": "max",
+      "description": "Claude's daily coding model for strong implementation, review, writing, and balanced tool use. Use for the hardest high-value problems where maximum reasoning depth is justified."
+    },
+    "claude_sonnet_ultracode": {
+      "agent": "claude",
+      "model": "sonnet",
+      "reasoning": "ultracode",
+      "description": "Claude's daily coding model for strong implementation, review, writing, and balanced tool use. Use for large, decomposable tasks that benefit from xhigh reasoning and Claude Code workflow orchestration."
+    },
+    "claude_haiku_default": {
+      "agent": "claude",
+      "model": "haiku",
+      "description": "Claude's fastest and most efficient model for simple questions, small transformations, classification, and other straightforward tasks. Use the model's default effort because Haiku does not expose effort control."
     }
   }
 }

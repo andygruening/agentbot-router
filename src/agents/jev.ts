@@ -10,7 +10,7 @@ import {
 type JevChoice = {
   agent: "codex" | "claude";
   model: string;
-  reasoning: string;
+  reasoning?: string;
   description: string;
 };
 
@@ -55,7 +55,8 @@ export async function routeDefaultAgentWithJev(
     const descriptions = Object.fromEntries(
       Object.entries(enabledOptions).map(([id, option]) => [
         id,
-        `${option.description} Agent: ${option.agent}. Model: ${option.model}. Reasoning: ${option.reasoning}.`
+        `${option.description} Agent: ${option.agent}. Model: ${option.model}.` +
+          (option.reasoning ? ` Reasoning: ${option.reasoning}.` : " Use the model's default effort.")
       ])
     );
     const decision = await decide(userMessage.trim(), choices.question, descriptions, apiKey);
@@ -70,7 +71,7 @@ export async function routeDefaultAgentWithJev(
       ...fallback,
       agent: selected.agent,
       model: selected.model,
-      reasoning: selected.reasoning,
+      ...(selected.reasoning ? { reasoning: selected.reasoning } : {}),
       routing: {
         provider: "typesafe-jev",
         option,
@@ -104,11 +105,17 @@ export async function loadJevChoices(filePath: string): Promise<JevChoicesFile> 
     const reasoning = value.reasoning;
     const description = value.description;
     if ((agent !== "codex" && agent !== "claude") || typeof model !== "string" || !isModelName(model)
-      || typeof reasoning !== "string" || !supportedReasoning(agent).includes(reasoning)
+      || (reasoning !== undefined &&
+        (typeof reasoning !== "string" || !supportedReasoning(agent).includes(reasoning)))
       || typeof description !== "string" || !description.trim()) {
       throw new Error(`Invalid Jev option "${id}"`);
     }
-    options[id] = { agent, model, reasoning, description: description.trim() };
+    options[id] = {
+      agent,
+      model,
+      ...(typeof reasoning === "string" ? { reasoning } : {}),
+      description: description.trim()
+    };
   }
 
   return { question: parsed.question.trim(), options };
