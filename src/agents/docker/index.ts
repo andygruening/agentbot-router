@@ -23,7 +23,8 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
   const authMount = context.agentSelection.agent === "codex"
     ? `${config.agents.docker.codexAuthVolume}:/home/agent/.codex`
     : `${config.agents.docker.claudeAuthVolume}:/home/agent`;
-  args.push("--volume", `${path.resolve(context.jobDir)}:/job`,
+  args.push("--tmpfs", "/workspace:rw,exec,mode=1777",
+    "--volume", `${path.resolve(context.jobDir)}:/job`,
     "--volume", authMount,
     "--env", "HOME=/home/agent",
     "--env", "GH_TOKEN", "--env", "GITHUB_TOKEN",

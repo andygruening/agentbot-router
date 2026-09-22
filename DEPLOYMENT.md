@@ -139,6 +139,8 @@ You may run only one of those commands, but remove the other CLI from `AGENT_TAG
 
 Run these setup commands as `agentbot`, including after upgrading from a version that ran job containers as root. They assign the authentication volumes to the service account. Task containers then use the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
 
+Each task receives a fresh in-memory `/workspace` filesystem. Repository clones and temporary worktrees disappear with the container, while the job record and agent output remain under `WEBHOOK_EVENT_DIR` on the host.
+
 Create the receiver's systemd unit:
 
 ```bash
@@ -253,3 +255,5 @@ Test the full flow:
 For a supplied pull request branch, changed files are committed and pushed back to that branch. Without a supplied branch, the worker creates a task branch and pull request only when files changed. A question-only task posts its response without creating a branch or pull request.
 
 The GitHub App only delivers read-only webhooks. `GH_TOKEN` performs repository cloning, pushes, pull request creation, comments, and reactions. See GitHub's documentation for [webhook permissions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/using-webhooks-with-github-apps) and [installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app).
+
+For accepted tasks, 👀 indicates active processing, 👍 indicates successful completion, and 👎 indicates a failed, timed out, or blocked task. Reaction attempts and any GitHub API errors are recorded in each job's `github-response.json`.
