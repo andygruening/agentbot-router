@@ -127,6 +127,7 @@ test("webhook endpoint persists payload and launches a Codex agent", async () =>
 test("$claude selects the Claude runner for a tagged delivery", async () => {
   const eventDir = await mkdtemp(path.join(tmpdir(), "webhook-claude-"));
   const config = readConfig({
+    AGENT_TAGS: "codex,claude",
     GITHUB_WEBHOOK_SECRET: "test-secret",
     WEBHOOK_EVENT_DIR: eventDir,
     GITHUB_CONTEXT_ENABLED: "false",

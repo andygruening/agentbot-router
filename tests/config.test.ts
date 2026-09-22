@@ -6,7 +6,7 @@ test("readConfig applies Docker runner defaults", () => {
   const config = readConfig({});
   assert.equal(config.core.host, "127.0.0.1");
   assert.equal(config.agents.selection.defaultAgent, "codex");
-  assert.deepEqual(config.agents.selection.tags, ["codex", "claude"]);
+  assert.deepEqual(config.agents.selection.tags, ["codex"]);
   assert.equal(config.agents.docker.command, "docker");
   assert.equal(config.agents.docker.image, "local-agent-bot-agent:latest");
   assert.equal(config.agents.docker.pull, false);

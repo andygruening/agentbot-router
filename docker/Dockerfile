@@ -6,7 +6,9 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/*
 
 COPY docker/agent-entrypoint.sh /usr/local/bin/agent-entrypoint
-RUN chmod 0755 /usr/local/bin/agent-entrypoint
+RUN chmod 0755 /usr/local/bin/agent-entrypoint \
+ && mkdir -p /home/agent /workspace \
+ && chmod 1777 /home/agent /workspace
 
 WORKDIR /workspace
 ENTRYPOINT ["/usr/local/bin/agent-entrypoint"]

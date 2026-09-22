@@ -11,7 +11,12 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
   const context = buildContext("codex", "feature/fix");
   const args = buildDockerArgs(readConfig({}), context);
   assert.deepEqual(args.slice(0, 4), ["run", "--rm", "--name", "local-agent-job-1"]);
-  assert.ok(args.includes("local-agent-codex-auth:/root/.codex"));
+  assert.ok(args.includes("local-agent-codex-auth:/home/agent/.codex"));
+  assert.deepEqual(args.slice(args.indexOf("--user"), args.indexOf("--user") + 2), [
+    "--user",
+    `${process.getuid?.()}:${process.getgid?.()}`
+  ]);
+  assert.ok(args.includes("HOME=/home/agent"));
   assert.ok(args.includes("GITHUB_REPOSITORY=octo/example"));
   assert.ok(args.includes("GITHUB_BRANCH=feature/fix"));
   assert.ok(args.includes("AGENT_MODEL=gpt-5.5"));
@@ -27,7 +32,7 @@ test("Docker runner mounts Claude subscription auth home", () => {
   context.agentSelection.model = "fable-5.1";
   context.agentSelection.reasoning = "low";
   const args = buildDockerArgs(readConfig({}), context);
-  assert.ok(args.includes("local-agent-claude-auth:/root"));
+  assert.ok(args.includes("local-agent-claude-auth:/home/agent"));
   assert.ok(args.includes("GITHUB_BRANCH="));
   assert.ok(args.includes("AGENT_CLI=claude"));
   assert.ok(args.includes("AGENT_MODEL=fable-5.1"));

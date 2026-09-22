@@ -35,7 +35,11 @@ test("Jev routes $agent to the selected model and reasoning", async () => {
       model: "jev-test"
     };
   };
-  const config = readConfig({ TYPESAFE_API_KEY: "typesafe-test-key", JEV_CHOICES_PATH: choicesPath });
+  const config = readConfig({
+    AGENT_TAGS: "codex,claude",
+    TYPESAFE_API_KEY: "typesafe-test-key",
+    JEV_CHOICES_PATH: choicesPath
+  });
 
   const selected = await routeDefaultAgentWithJev(
     config,
@@ -65,6 +69,30 @@ test("Jev falls back without an API key", async () => {
     ...fallback,
     routing: { provider: "typesafe-jev", fallbackReason: "not_configured" }
   });
+});
+
+test("Jev excludes choices for agents that are not configured", async () => {
+  const choicesPath = await writeChoices();
+  const decide: JevDecider = async (_message, _question, descriptions) => {
+    assert.deepEqual(Object.keys(descriptions), ["codex_low"]);
+    return {
+      option: "codex_low",
+      confidence: 1,
+      probabilities: { codex_low: 1 },
+      model: "jev-test"
+    };
+  };
+  const config = readConfig({
+    AGENT_TAGS: "codex",
+    TYPESAFE_API_KEY: "typesafe-test-key",
+    JEV_CHOICES_PATH: choicesPath
+  });
+
+  const selected = await routeDefaultAgentWithJev(config, fallback, "Fix this", decide);
+
+  assert.equal(selected.agent, "codex");
+  assert.equal(selected.model, "gpt-5.6-sol");
+  assert.equal(selected.reasoning, "low");
 });
 
 test("Jev choices reject unsupported reasoning", async () => {

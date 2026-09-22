@@ -45,15 +45,22 @@ export async function routeDefaultAgentWithJev(
 
   try {
     const choices = await loadJevChoices(config.agents.jev.choicesPath);
+    const enabledAgents = new Set(config.agents.selection.tags);
+    const enabledOptions = Object.fromEntries(
+      Object.entries(choices.options).filter(([, option]) => enabledAgents.has(option.agent))
+    );
+    if (Object.keys(enabledOptions).length === 0) {
+      throw new Error("Jev choices do not contain an option for a configured agent");
+    }
     const descriptions = Object.fromEntries(
-      Object.entries(choices.options).map(([id, option]) => [
+      Object.entries(enabledOptions).map(([id, option]) => [
         id,
         `${option.description} Agent: ${option.agent}. Model: ${option.model}. Reasoning: ${option.reasoning}.`
       ])
     );
     const decision = await decide(userMessage.trim(), choices.question, descriptions, apiKey);
     const option = highestProbabilityOption(decision.probabilities) ?? decision.option;
-    const selected = choices.options[option];
+    const selected = enabledOptions[option];
     if (!selected) throw new Error(`Jev returned unknown option "${option}"`);
     if (!Number.isFinite(decision.confidence) || decision.confidence < 0 || decision.confidence > 1) {
       throw new Error("Jev returned invalid confidence");
