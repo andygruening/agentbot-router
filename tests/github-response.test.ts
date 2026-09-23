@@ -255,6 +255,23 @@ test("unknown failures never publish raw stderr", async () => {
   assert.doesNotMatch(comment, /proprietary|secret=value/);
 });
 
+test("push authentication failures are not misclassified by clone progress", async () => {
+  const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-push-failure-"));
+  const job = {
+    ...buildJob(tempDir),
+    status: "failed" as const,
+    error: [
+      "Cloning into '/workspace/source'...",
+      "fatal: could not read Username for 'https://github.com': No such device or address"
+    ].join("\n")
+  };
+
+  const comment = await buildResultComment(job, undefined);
+
+  assert.match(comment, /\*\*Stage:\*\* Repository delivery/);
+  assert.doesNotMatch(comment, /Repository checkout|Cloning into|could not read Username/);
+});
+
 test("buildResultComment rejects completed worker results without agent-output markdown", async () => {
   const tempDir = await mkdtemp(path.join(tmpdir(), "github-response-missing-output-"));
 

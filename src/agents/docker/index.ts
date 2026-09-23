@@ -27,7 +27,7 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
     "--env", "CODEX_HOME=/home/agent/.codex",
     "--env", `LOCAL_AGENT_UID=${uid ?? 1000}`,
     "--env", `LOCAL_AGENT_GID=${gid ?? 1000}`,
-    "--env", "GH_TOKEN", "--env", "GITHUB_TOKEN",
+    "--env", "GH_TOKEN", "--env", "GITHUB_TOKEN", "--env", "GH_HOST",
     "--env", `AGENT_CLI=${context.agentSelection.agent}`,
     "--env", `GITHUB_REPOSITORY=${context.metadata.cloneRepositoryFullName ?? context.metadata.repositoryFullName ?? ""}`,
     "--env", `GITHUB_BRANCH=${context.metadata.branch ?? ""}`,
@@ -80,7 +80,7 @@ export async function startDockerAgentJob(config: AppConfig, context: WebhookCon
 
 function dockerHostEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const result: NodeJS.ProcessEnv = {};
-  for (const key of ["HOME", "PATH", "DOCKER_HOST", "DOCKER_CONTEXT", "GH_TOKEN", "GITHUB_TOKEN"])
+  for (const key of ["HOME", "PATH", "DOCKER_HOST", "DOCKER_CONTEXT", "GH_TOKEN", "GITHUB_TOKEN", "GH_HOST"])
     if (env[key] !== undefined) result[key] = env[key];
   return result;
 }

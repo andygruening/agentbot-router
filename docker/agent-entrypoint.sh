@@ -23,6 +23,8 @@ fi
 : "${JOB_ID:?JOB_ID is required}"
 
 export GH_TOKEN
+gh auth setup-git --hostname "${GH_HOST:-github.com}" --force
+
 source_dir=/workspace/source
 repo_dir=/workspace/repository
 result_file=/tmp/agent-final.txt
