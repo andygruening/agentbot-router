@@ -200,6 +200,8 @@ Failure comments contain only a classified stage, a safe error summary, and the 
 
 Check `docker.stderr.log` for the failed `git push` or `gh pr create` command. Verify that `GH_TOKEN` can clone and push to the target repository and create pull requests. For an event with a supplied branch, changes are pushed to that branch. Without a supplied branch, the worker creates an `agent/<job-id>` branch and pull request only when files changed. Question-only tasks intentionally create neither.
 
+The job container runs `gh auth setup-git` before repository operations, which configures Git to obtain HTTPS credentials from GitHub CLI and the injected `GH_TOKEN`. A `could not read Username for 'https://github.com'` error usually means the server is running an older image. Pull the current source, rebuild `AGENT_DOCKER_IMAGE`, and restart the receiver.
+
 Test token access as the service account without printing the token:
 
 ```bash

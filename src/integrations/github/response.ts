@@ -348,20 +348,20 @@ function classifyFailure(job: AgentJob): { stage: string; message: string } {
     return { stage: "Container setup", message: "The agent container encountered a filesystem permission error." };
   }
   if (
-    error.includes("cloning into") ||
-    error.includes("repository not found") ||
-    error.includes("could not read from remote repository") ||
-    error.includes("failed to run git")
-  ) {
-    return { stage: "Repository checkout", message: "The repository could not be cloned or checked out." };
-  }
-  if (
+    error.includes("could not read username") ||
     error.includes("failed to push") ||
     error.includes("git push") ||
     error.includes("gh pr create") ||
     error.includes("pull request")
   ) {
     return { stage: "Repository delivery", message: "The changes could not be pushed or delivered as a pull request." };
+  }
+  if (
+    error.includes("repository not found") ||
+    error.includes("could not read from remote repository") ||
+    error.includes("failed to run git")
+  ) {
+    return { stage: "Repository checkout", message: "The repository could not be cloned or checked out." };
   }
   if (error.includes("without a valid worker completion envelope")) {
     return { stage: "Result processing", message: "The agent finished without returning a valid completion result." };

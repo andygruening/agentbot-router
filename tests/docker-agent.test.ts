@@ -26,6 +26,7 @@ test("Docker runner mounts Codex subscription auth and passes repository branch"
   assert.ok(args.includes("AGENT_MODEL=gpt-5.6-sol"));
   assert.ok(args.includes("AGENT_REASONING=low"));
   assert.ok(args.includes("GH_TOKEN"));
+  assert.ok(args.includes("GH_HOST"));
   assert.ok(!args.includes("CODEX_API_KEY"));
   assert.ok(!args.includes("ANTHROPIC_API_KEY"));
   assert.ok(!args.some((arg) => arg.includes("TYPESAFE_API_KEY")));
