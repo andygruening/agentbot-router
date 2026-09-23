@@ -114,14 +114,14 @@ Claude refuses that option when its process runs with root privileges. Current c
 
 Update and rebuild the project image, ensure the systemd unit runs as `User=agentbot`, and restart the receiver. Do not run the receiver itself with `sudo node ...`.
 
-## Cannot create `/workspace/source`
+## Cannot write the agent workspace
 
-An error such as `could not create work tree dir '/workspace/source': Permission denied` means the container user cannot write to the workspace. The current runner mounts `/workspace` as a writable temporary filesystem with mode `1777`.
+An error writing `/workspace/repository` means the container user cannot write to the host-persisted agent workspace. The receiver creates this directory below the job directory and bind-mounts it into the container.
 
 Update and rebuild the image, then verify the effective Docker arguments in the job's `job.json` include:
 
 ```text
---tmpfs /workspace:rw,exec,mode=1777
+--volume <job-directory>/agent-workspace:/workspace/repository
 ```
 
 Also confirm that the systemd account can access Docker:
@@ -198,9 +198,9 @@ Failure comments contain only a classified stage, a safe error summary, and the 
 
 ## Changes cannot be pushed or a pull request cannot be created
 
-Check `docker.stderr.log` for the failed `git push` or `gh pr create` command. Verify that `GH_TOKEN` can clone and push to the target repository and create pull requests. For an event with a supplied branch, changes are pushed to that branch. Without a supplied branch, the worker creates an `agent/<job-id>` branch and pull request only when files changed. Question-only tasks intentionally create neither.
+Check `job.json` for the failed wrapper-side `git push` or `gh pr create` step. Verify that `GH_TOKEN` can clone and push to the target repository and create pull requests. For an event with a supplied branch, changes are pushed to that branch. Without a supplied branch, the receiver creates an `agent/<job-id>` branch and pull request only when files changed. Question-only tasks intentionally create neither.
 
-The job container runs `gh auth setup-git --hostname github.com` before repository operations, which configures Git to obtain HTTPS credentials from GitHub CLI and the injected `GH_TOKEN`. The command intentionally avoids newer optional flags so it remains compatible with the GitHub CLI version installed by the image. A `could not read Username for 'https://github.com'` or `unknown flag` error usually means the server is running an older image. Pull the current source, rebuild `AGENT_DOCKER_IMAGE`, and restart the receiver.
+Repository operations run in the receiver process, outside the agent container. The agent container never receives `GH_TOKEN`. A `could not read Username for 'https://github.com'` error therefore indicates a receiver-host authentication problem. Verify `gh auth status` for the service account and restart the receiver after correcting its environment.
 
 Test token access as the service account without printing the token:
 

@@ -326,7 +326,7 @@ function buildGitHubContextMarkdown(
     "## Work Target Guidance",
     "",
     state.codeChangeRequested
-      ? "The triggering text appears to ask for integration or code changes. If the target is a pull request, or one referenced open PR clearly matches the task, use that PR branch as the work target. Prefer `gh pr checkout <number> --repo <repo>` before editing, then commit and push to the checked-out branch. If no referenced PR clearly matches, create a new branch, commit the smallest appropriate change, push it, and open a pull request with `gh pr create --repo <repo>`. Do not report code changes as done while they exist only in the local workspace."
+      ? "The triggering text appears to ask for code changes. Edit only the supplied working files. The wrapper owns branch selection, commits, pushes, and pull request creation."
       : "The triggering text does not clearly ask for integration or code changes. Treat referenced PRs as context only. Do not checkout, push, or upload source changes solely because a PR is referenced.",
     "",
     "## Issue Comments",
@@ -554,7 +554,6 @@ function appendPullRequestSummary(
     `URL: ${pullRequest.url ?? "unknown"}`,
     `Head: ${pullRequest.head.repo ?? "unknown"}:${pullRequest.head.ref ?? "unknown"} (${pullRequest.head.sha ?? "unknown"})`,
     `Base: ${pullRequest.base.repo ?? "unknown"}:${pullRequest.base.ref ?? "unknown"} (${pullRequest.base.sha ?? "unknown"})`,
-    `Checkout: gh pr checkout ${pullRequest.number} --repo ${pullRequest.repo}`,
     ""
   );
 }

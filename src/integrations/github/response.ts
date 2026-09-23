@@ -350,6 +350,7 @@ function classifyFailure(job: AgentJob): { stage: string; message: string } {
   if (
     error.includes("could not read username") ||
     error.includes("failed to push") ||
+    error.includes("repository delivery failed") ||
     error.includes("git push") ||
     error.includes("gh pr create") ||
     error.includes("pull request")
@@ -357,6 +358,7 @@ function classifyFailure(job: AgentJob): { stage: string; message: string } {
     return { stage: "Repository delivery", message: "The changes could not be pushed or delivered as a pull request." };
   }
   if (
+    error.includes("repository checkout failed") ||
     error.includes("repository not found") ||
     error.includes("could not read from remote repository") ||
     error.includes("failed to run git")

@@ -6,12 +6,21 @@ import type { WebhookContext } from "../../core/webhook-context.ts";
 import { parseWorkerResult } from "../shared/completion-envelope.ts";
 import { writeJsonFileAtomic } from "../shared/json-files.ts";
 import type { AgentJob, AgentRunner, StartAgentJobOptions, WorkerResult } from "../types.ts";
+import {
+  finalizeRepositoryWorkspace,
+  prepareRepositoryWorkspace,
+  type RepositoryWorkspace
+} from "./repository-delivery.ts";
 
 const runner = (id: "codex" | "claude", displayName: string): AgentRunner => ({ id, displayName, start: startDockerAgentJob });
 export const codexDockerRunner = runner("codex", "Codex CLI");
 export const claudeDockerRunner = runner("claude", "Claude CLI");
 
-export function buildDockerArgs(config: AppConfig, context: WebhookContext): string[] {
+export function buildDockerArgs(
+  config: AppConfig,
+  context: WebhookContext,
+  agentWorkspacePath = path.join(context.jobDir, "agent-workspace")
+): string[] {
   const args = ["run", "--rm", "--name", `agentbot-router-${safeName(context.jobId)}`];
   const uid = process.getuid?.();
   const gid = process.getgid?.();
@@ -20,17 +29,15 @@ export function buildDockerArgs(config: AppConfig, context: WebhookContext): str
   const authMount = context.agentSelection.agent === "codex"
     ? `${config.agents.docker.codexAuthVolume}:/home/agent/.codex`
     : `${config.agents.docker.claudeAuthVolume}:/home/agent`;
-  args.push("--tmpfs", "/workspace:rw,exec,mode=1777",
-    "--volume", `${path.resolve(context.jobDir)}:/job`,
+  args.push("--volume", `${path.resolve(context.jobDir)}:/job`,
+    "--volume", `${path.resolve(agentWorkspacePath)}:/workspace/repository`,
+    "--workdir", "/workspace/repository",
     "--volume", authMount,
     "--env", "HOME=/home/agent",
     "--env", "CODEX_HOME=/home/agent/.codex",
     "--env", `LOCAL_AGENT_UID=${uid ?? 1000}`,
     "--env", `LOCAL_AGENT_GID=${gid ?? 1000}`,
-    "--env", "GH_TOKEN", "--env", "GITHUB_TOKEN", "--env", "GH_HOST",
     "--env", `AGENT_CLI=${context.agentSelection.agent}`,
-    "--env", `GITHUB_REPOSITORY=${context.metadata.cloneRepositoryFullName ?? context.metadata.repositoryFullName ?? ""}`,
-    "--env", `GITHUB_BRANCH=${context.metadata.branch ?? ""}`,
     "--env", `JOB_ID=${context.jobId}`,
     "--env", `AGENT_MODEL=${selectedModel ?? ""}`,
     "--env", `AGENT_REASONING=${context.agentSelection.reasoning ?? ""}`,
@@ -64,8 +71,19 @@ export async function startDockerAgentJob(config: AppConfig, context: WebhookCon
     await onComplete(job, result); return job;
   }
   const hostEnv = options.env ?? process.env;
-  if (!hostEnv.GH_TOKEN && !hostEnv.GITHUB_TOKEN) {
-    throw new DockerAgentLaunchError("GH_TOKEN or GITHUB_TOKEN is required for container repository operations");
+  let repositoryWorkspace: RepositoryWorkspace;
+  try {
+    repositoryWorkspace = await prepareRepositoryWorkspace(config, context, hostEnv);
+  } catch (error) {
+    const failed: AgentJob = {
+      ...base,
+      status: "failed",
+      finishedAt: new Date().toISOString(),
+      error: `Repository checkout failed: ${error instanceof Error ? error.message : String(error)}`
+    };
+    await writeJsonFileAtomic(metadataPath, failed);
+    await onComplete(failed, undefined);
+    return failed;
   }
   const child = spawn(config.agents.docker.command, args, { env: dockerHostEnv(hostEnv), stdio: ["ignore", "pipe", "pipe"] });
   const stdout: Buffer[] = [], stderr: Buffer[] = [];
@@ -74,17 +92,17 @@ export async function startDockerAgentJob(config: AppConfig, context: WebhookCon
   await waitForSpawn(child);
   const running = { ...base, sessionId: String(child.pid) };
   await writeJsonFileAtomic(metadataPath, running);
-  void monitor(processDone, context, running, stdout, stderr, onComplete);
+  void monitor(processDone, config, context, repositoryWorkspace, running, stdout, stderr, onComplete, hostEnv);
   return running;
 }
 
 function dockerHostEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const result: NodeJS.ProcessEnv = {};
-  for (const key of ["HOME", "PATH", "DOCKER_HOST", "DOCKER_CONTEXT", "GH_TOKEN", "GITHUB_TOKEN", "GH_HOST"])
+  for (const key of ["HOME", "PATH", "DOCKER_HOST", "DOCKER_CONTEXT"])
     if (env[key] !== undefined) result[key] = env[key];
   return result;
 }
-async function monitor(processDone: Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }>, context: WebhookContext, job: AgentJob, out: Buffer[], err: Buffer[], onComplete: NonNullable<StartAgentJobOptions["onComplete"]>): Promise<void> {
+async function monitor(processDone: Promise<{ exitCode: number | null; signal: NodeJS.Signals | null }>, config: AppConfig, context: WebhookContext, workspace: RepositoryWorkspace, job: AgentJob, out: Buffer[], err: Buffer[], onComplete: NonNullable<StartAgentJobOptions["onComplete"]>, hostEnv: NodeJS.ProcessEnv): Promise<void> {
   const processResult = await processDone;
   const stdout = Buffer.concat(out).toString("utf8"), stderr = Buffer.concat(err).toString("utf8");
   await Promise.all([writeFile(job.stdoutPath, stdout), writeFile(job.stderrPath, stderr), writeFile(job.transcriptPath, stdout)]);
@@ -99,6 +117,14 @@ async function monitor(processDone: Promise<{ exitCode: number | null; signal: N
     await writeJsonFileAtomic(job.metadataPath, failed); await onComplete(failed, undefined); return;
   }
   const finished: AgentJob = { ...job, status: parsed.result.status, finishedAt, exitCode: 0 };
+  if (parsed.result.status === "completed") {
+    try {
+      await finalizeRepositoryWorkspace(config, context, workspace, finished, hostEnv);
+    } catch (error) {
+      const failed: AgentJob = { ...finished, status: "failed", error: `Repository delivery failed: ${error instanceof Error ? error.message : String(error)}` };
+      await writeJsonFileAtomic(job.metadataPath, failed); await onComplete(failed, undefined); return;
+    }
+  }
   await Promise.all([writeJsonFileAtomic(job.resultPath, parsed.result), writeJsonFileAtomic(job.metadataPath, finished)]); await onComplete(finished, parsed.result);
 }
 function waitForSpawn(child: ReturnType<typeof spawn>): Promise<void> { return new Promise((resolve, reject) => { child.once("spawn", resolve); child.once("error", reject); }); }
