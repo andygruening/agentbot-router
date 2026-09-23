@@ -16,31 +16,9 @@ if [ "$#" -gt 0 ]; then
   exec "$@"
 fi
 
-: "${GH_TOKEN:=${GITHUB_TOKEN:-}}"
-: "${GH_TOKEN:?GH_TOKEN or GITHUB_TOKEN is required}"
-: "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 : "${AGENT_CLI:?AGENT_CLI is required}"
 : "${JOB_ID:?JOB_ID is required}"
-
-export GH_TOKEN
-gh auth setup-git --hostname "${GH_HOST:-github.com}"
-
-source_dir=/workspace/source
-repo_dir=/workspace/repository
 result_file=/tmp/agent-final.txt
-branch="${GITHUB_BRANCH:-}"
-
-gh repo clone "$GITHUB_REPOSITORY" "$source_dir"
-if [ -n "$branch" ]; then
-  repo_dir=$source_dir
-  git -C "$repo_dir" fetch origin "$branch"
-  git -C "$repo_dir" checkout -B "$branch" "origin/$branch"
-else
-  git -C "$source_dir" worktree add --detach "$repo_dir" HEAD
-fi
-cd "$repo_dir"
-git config user.name "agentbot-router"
-git config user.email "agentbot-router@users.noreply.github.com"
 
 if [ "$AGENT_CLI" = codex ]; then
   export CODEX_HOME=/home/agent/.codex
@@ -61,23 +39,6 @@ elif [ "$AGENT_CLI" = claude ]; then
 else
   echo "Unsupported AGENT_CLI: $AGENT_CLI" >&2
   exit 2
-fi
-
-if [ -n "$(git status --porcelain)" ]; then
-  if [ -z "$branch" ]; then
-    task_branch="agent/${JOB_ID}"
-    git switch -c "$task_branch"
-  fi
-  git add --all
-  git commit -m "Apply agent task $JOB_ID"
-  if [ -n "$branch" ]; then
-    git push origin "HEAD:$branch"
-    printf '\n\nChanges were committed and pushed to `%s`.\n' "$branch" >> /job/agent-output.md
-  else
-    git push --set-upstream origin "$task_branch"
-    pr_url=$(gh pr create --repo "$GITHUB_REPOSITORY" --head "$task_branch" --fill)
-    printf '\n\nPull request: %s\n' "$pr_url" >> /job/agent-output.md
-  fi
 fi
 
 cat "$result_file"

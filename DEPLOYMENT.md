@@ -119,7 +119,7 @@ TYPESAFE_API_KEY=replace-with-your-typesafe-api-key
 JEV_CHOICES_PATH=jev-choices.json
 ```
 
-`GH_TOKEN` must be able to clone every target repository, push task branches, create pull requests, read issues and pull requests, and post comments and reactions. The receiver passes it into a job container only for that job. It is separate from the read-only GitHub App used to deliver webhooks.
+`GH_TOKEN` must be able to clone every target repository, push task branches, create pull requests, read issues and pull requests, and post comments and reactions. The receiver uses it for those operations and does not pass it into agent containers. It is separate from the read-only GitHub App used to deliver webhooks.
 
 `TYPESAFE_API_KEY` is required for any tag that omits the agent, model, or reasoning. `$agent` lets Jev choose all three values. `$codex` and `$claude` constrain the agent, and tags such as `$codex:gpt-6-astra` also constrain the model. Jev receives only matching options from `jev-choices.json`, and its highest-confidence choice is used. Fully specified tags run directly. The TypeSafe key remains in the receiver process and is never passed to job containers.
 
@@ -140,7 +140,7 @@ The Codex setup forces file-backed credential storage, verifies that `auth.json`
 
 Run these setup commands as `agentbot`. At job startup, the container assigns the selected authentication volume to the service account and then drops root before launching Codex or Claude. This automatically migrates volumes created by older root based versions. The agent process uses the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
 
-Each task receives a fresh in-memory `/workspace` filesystem. Repository clones and temporary worktrees disappear with the container, while the job record and agent output remain under `WEBHOOK_EVENT_DIR` on the host.
+The receiver keeps a trusted Git checkout in a wrapper-only directory and a separate agent workspace under the job directory. Only the agent workspace is mounted into the container, without `.git` metadata or GitHub credentials. After a successful run, the receiver copies the working files into the trusted checkout before repository delivery. Both workspaces remain under `WEBHOOK_EVENT_DIR` for inspection.
 
 Create the receiver's systemd unit:
 
@@ -255,6 +255,6 @@ Test the full flow:
 
 For a supplied pull request branch, changed files are committed and pushed back to that branch. Without a supplied branch, the worker creates a task branch and pull request only when files changed. A question-only task posts its response without creating a branch or pull request.
 
-The GitHub App only delivers read-only webhooks. `GH_TOKEN` performs repository cloning, pushes, pull request creation, comments, and reactions. See GitHub's documentation for [webhook permissions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/using-webhooks-with-github-apps) and [installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app).
+The GitHub App only delivers read-only webhooks. The receiver—not the agent container—uses `GH_TOKEN` for repository cloning, pushes, pull request creation, comments, and reactions. See GitHub's documentation for [webhook permissions](https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/using-webhooks-with-github-apps) and [installing your own GitHub App](https://docs.github.com/en/apps/using-github-apps/installing-your-own-github-app).
 
 For accepted tasks, 👀 indicates active processing, 👍 indicates successful completion, and 👎 indicates a failed, timed out, or blocked task. Reaction attempts and any GitHub API errors are recorded in each job's `github-response.json`.
