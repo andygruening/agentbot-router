@@ -23,7 +23,7 @@ fi
 : "${JOB_ID:?JOB_ID is required}"
 
 export GH_TOKEN
-gh auth setup-git --hostname "${GH_HOST:-github.com}" --force
+gh auth setup-git --hostname "${GH_HOST:-github.com}"
 
 source_dir=/workspace/source
 repo_dir=/workspace/repository
