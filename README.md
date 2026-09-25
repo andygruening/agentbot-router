@@ -1,6 +1,6 @@
 # agentbot-router
 
-A Node.js TypeScript webhook receiver that saves accepted deliveries, gathers GitHub issue or pull request context with `gh`, and launches Codex CLI or Claude CLI in a disposable Docker container. Subscription authentication persists in dedicated Docker volumes. The receiver handles GitHub reactions and result comments after the container finishes.
+A Node.js TypeScript webhook receiver that saves accepted deliveries, gathers GitHub issue or pull request context with `gh`, and launches Codex CLI or Claude CLI in an isolated Docker workflow. A credentialed repository container prepares a job-scoped workspace, the agent container edits it without `git`, `gh`, or GitHub credentials, and a repository finalizer delivers any changes. Subscription authentication persists in dedicated Docker volumes. The receiver handles GitHub reactions and result comments after the workflow finishes.
 
 ## Setup
 
@@ -24,7 +24,7 @@ On `issue_comment` events, only the new comment is scanned. Configure supported 
 
 Accepted tasks use GitHub reactions as status: 👀 while processing, the configured completion reaction (👍 by default) after success, and 👎 after any failed, timed out, or blocked result. The receiver keeps 👀 in place if GitHub cannot record the terminal reaction.
 
-Each accepted job writes its webhook payload, GitHub context, prompt, process logs, output, and result under `WEBHOOK_EVENT_DIR`. The agent writes the public reply to `agent-output.md` and ends with an `AGENT_WORKER_DONE` or `AGENT_WORKER_BLOCKED` envelope. The receiver posts the output file through `gh`; the agent must not post its own GitHub response.
+Each accepted job writes its webhook payload, GitHub context, prompt, process logs, output, and result under `WEBHOOK_EVENT_DIR`. The agent writes the public reply to `agent-output.md` and ends with an `AGENT_WORKER_DONE` or `AGENT_WORKER_BLOCKED` envelope. The receiver posts the output file through `gh`; the agent container has no GitHub credentials or Git tooling and cannot post its own response.
 
 ## Development
 

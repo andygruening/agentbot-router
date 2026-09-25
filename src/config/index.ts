@@ -44,6 +44,10 @@ export function readConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       docker: {
         command: readString(env.DOCKER_COMMAND, "docker"),
         image: readString(env.AGENT_DOCKER_IMAGE, "agentbot-router-agent:latest"),
+        repositoryImage: readString(
+          env.REPOSITORY_DOCKER_IMAGE,
+          "agentbot-router-repository:latest"
+        ),
         pull: readBoolean(env.AGENT_DOCKER_PULL, false),
         codexAuthVolume: readString(env.CODEX_AUTH_VOLUME, "agentbot-router-codex-auth"),
         claudeAuthVolume: readString(env.CLAUDE_AUTH_VOLUME, "agentbot-router-claude-auth"),

@@ -41,7 +41,7 @@ Useful files within a job directory include:
 - `github-context.json` and `github-context.md`: fetched issue or pull request context.
 - `agent-routing.json`: Jev choice and confidence when an incomplete agent tag was used.
 - `prompt.md`: instructions passed to the agent.
-- `docker.stdout.log` and `docker.stderr.log`: container output and errors.
+- `docker.stdout.log` and `docker.stderr.log`: phase-prefixed preparation, agent, and finalization output and errors.
 - `job.json` and `agent-result.json`: final state and worker result.
 - `agent-output.md`: reply posted to GitHub.
 - `github-response.json`: comment and reaction attempts, including GitHub API errors.
@@ -114,14 +114,14 @@ Claude refuses that option when its process runs with root privileges. Current c
 
 Update and rebuild the project image, ensure the systemd unit runs as `User=agentbot`, and restart the receiver. Do not run the receiver itself with `sudo node ...`.
 
-## Cannot create `/workspace/source`
+## Cannot create `/workspace/repository`
 
-An error such as `could not create work tree dir '/workspace/source': Permission denied` means the container user cannot write to the workspace. The current runner mounts `/workspace` as a writable temporary filesystem with mode `1777`.
+An error such as `could not create work tree dir '/workspace/repository': Permission denied` means a workflow container cannot write to the job-scoped workspace volume. The repository preparation container creates the checkout with the receiver's UID and GID before the agent container starts.
 
-Update and rebuild the image, then verify the effective Docker arguments in the job's `job.json` include:
+Update and rebuild both images, then verify the effective agent Docker arguments in the job's `job.json` include a workspace mount similar to:
 
 ```text
---tmpfs /workspace:rw,exec,mode=1777
+agentbot-router-workspace-<job-id>:/workspace
 ```
 
 Also confirm that the systemd account can access Docker:
@@ -198,9 +198,9 @@ Failure comments contain only a classified stage, a safe error summary, and the 
 
 ## Changes cannot be pushed or a pull request cannot be created
 
-Check `docker.stderr.log` for the failed `git push` or `gh pr create` command. Verify that `GH_TOKEN` can clone and push to the target repository and create pull requests. For an event with a supplied branch, changes are pushed to that branch. Without a supplied branch, the worker creates an `agent/<job-id>` branch and pull request only when files changed. Question-only tasks intentionally create neither.
+Check the `[prepare]` or `[finalize]` section of `docker.stderr.log` for the failed clone, `git push`, or `gh pr create` command. Verify that `GH_TOKEN` can clone and push to the target repository and create pull requests. For an event with a supplied branch, changes are pushed to that branch. Without a supplied branch, the finalizer creates an `agent/<job-id>` branch and pull request only when files changed. Question-only tasks intentionally create neither.
 
-The job container runs `gh auth setup-git --hostname github.com` before repository operations, which configures Git to obtain HTTPS credentials from GitHub CLI and the injected `GH_TOKEN`. The command intentionally avoids newer optional flags so it remains compatible with the GitHub CLI version installed by the image. A `could not read Username for 'https://github.com'` or `unknown flag` error usually means the server is running an older image. Pull the current source, rebuild `AGENT_DOCKER_IMAGE`, and restart the receiver.
+The repository containers run `gh auth setup-git --hostname github.com` before repository operations, which configures Git to obtain HTTPS credentials from GitHub CLI and the injected `GH_TOKEN`. The agent container does not contain `git` or `gh` and never receives that token. A `could not read Username for 'https://github.com'` or `unknown flag` error usually means the server is running an older repository image. Pull the current source, rebuild both images with `pnpm docker:build`, and restart the receiver.
 
 Test token access as the service account without printing the token:
 
@@ -217,16 +217,16 @@ exit
 
 ## Changes do not appear after updating the repository
 
-The service runs compiled JavaScript and jobs use a built Docker image. After pulling source changes, update dependencies, rebuild both artifacts, and restart:
+The service runs compiled JavaScript and jobs use separate agent and repository Docker images. After pulling source changes, update dependencies, rebuild all artifacts, and restart:
 
 ```bash
 sudo -iu agentbot
 cd /srv/agentbot-router
 pnpm install --frozen-lockfile
 pnpm build
-docker build --tag agentbot-router-agent:latest --file docker/Dockerfile .
+pnpm docker:build
 exit
 sudo systemctl restart agentbot-router
 ```
 
-If `AGENT_DOCKER_IMAGE` names another image or tag, build that value instead.
+If `AGENT_DOCKER_IMAGE` or `REPOSITORY_DOCKER_IMAGE` uses another tag, export the matching value before running `pnpm docker:build`.

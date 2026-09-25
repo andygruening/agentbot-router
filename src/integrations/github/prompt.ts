@@ -15,7 +15,7 @@ export function buildGitHubPromptSection(
     savedFiles: contextPrompt.savedFiles,
     guidance: `${contextPrompt.guidance}
 
-Repository delivery rule: the container has already cloned and checked out the correct repository and, when supplied by the webhook, the correct branch. Work only in the current checkout. Do not create branches, worktrees, commits, pushes, pull requests, GitHub comments, or reactions. The container wrapper inspects the checkout after you finish. It pushes actual changes to the supplied branch, or creates a new branch and pull request when no branch was supplied. If you only answer a question and do not modify files, it creates no branch or pull request.`,
+Repository delivery rule: a separate preparation container has already cloned and checked out the correct repository and, when supplied by the webhook, the correct branch. Work only in the current checkout. Git and GitHub CLI are intentionally unavailable in the agent container. Do not create branches, worktrees, commits, pushes, pull requests, GitHub comments, or reactions through any other tool. After you finish, a separate finalization container inspects the shared checkout. It pushes actual changes to the supplied branch, or creates a new branch and pull request when no branch was supplied. If you only answer a question and do not modify files, it creates no branch or pull request.`,
     responseInstructions:
       "The webhook receiver owns GitHub reactions and final result comments. Write the response file, but do not add reactions or post GitHub comments yourself.",
     publicResponseName: "GitHub response",
