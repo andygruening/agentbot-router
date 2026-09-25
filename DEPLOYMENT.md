@@ -1,6 +1,6 @@
 # Ubuntu Server Deployment
 
-This guide installs `agentbot-router` on an Ubuntu server, runs each Codex or Claude task in a disposable Docker container, exposes the receiver with a remotely managed Cloudflare Tunnel, and delivers GitHub issue and pull request webhooks through a GitHub App.
+This guide installs `agentbot-router` on an Ubuntu server, runs each Codex or Claude task in isolated Docker containers, exposes the receiver with a remotely managed Cloudflare Tunnel, and delivers GitHub issue and pull request webhooks through a GitHub App.
 
 Use a dedicated server and service account for trusted agent workloads. Docker access is effectively root access. Run the administrative commands from a sudo-enabled account.
 
@@ -87,6 +87,7 @@ cd /srv/agentbot-router
 git pull --ff-only
 pnpm install --frozen-lockfile
 pnpm build
+pnpm docker:build
 exit
 sudo systemctl restart agentbot-router
 ```
@@ -113,17 +114,19 @@ ALLOWED_EVENTS=issues,issue_comment,pull_request,pull_request_review,pull_reques
 
 AGENT_TAGS=codex
 GH_TOKEN=github_pat_REPLACE_ME
+AGENT_DOCKER_IMAGE=agentbot-router-agent:latest
+REPOSITORY_DOCKER_IMAGE=agentbot-router-repository:latest
 
 # Required: TypeSafe Jev completes underspecified agent tags.
 TYPESAFE_API_KEY=replace-with-your-typesafe-api-key
 JEV_CHOICES_PATH=jev-choices.json
 ```
 
-`GH_TOKEN` must be able to clone every target repository, push task branches, create pull requests, read issues and pull requests, and post comments and reactions. The receiver passes it into a job container only for that job. It is separate from the read-only GitHub App used to deliver webhooks.
+`GH_TOKEN` must be able to clone every target repository, push task branches, create pull requests, read issues and pull requests, and post comments and reactions. The receiver passes it only to the short-lived repository preparation and finalization containers. The model container never receives the token. It is separate from the read-only GitHub App used to deliver webhooks.
 
 `TYPESAFE_API_KEY` is required for any tag that omits the agent, model, or reasoning. `$agent` lets Jev choose all three values. `$codex` and `$claude` constrain the agent, and tags such as `$codex:gpt-6-astra` also constrain the model. Jev receives only matching options from `jev-choices.json`, and its highest-confidence choice is used. Fully specified tags run directly. The TypeSafe key remains in the receiver process and is never passed to job containers.
 
-Authenticate at least one agent CLI with its subscription account. These commands build the shared image and save renewable login credentials in private Docker volumes:
+Authenticate at least one agent CLI with its subscription account. These commands build the isolated agent and repository images and save renewable login credentials in private Docker volumes:
 
 ```bash
 sudo -iu agentbot bash
@@ -138,9 +141,9 @@ You may run only one of those commands, but remove the other CLI from `AGENT_TAG
 
 The Codex setup forces file-backed credential storage, verifies that `auth.json` exists in the Docker volume, runs `codex login status`, and makes a small authenticated request before reporting success. If it fails, rerun `pnpm setup:codex` and complete the displayed device flow; do not continue until the request verification succeeds.
 
-Run these setup commands as `agentbot`. At job startup, the container assigns the selected authentication volume to the service account and then drops root before launching Codex or Claude. This automatically migrates volumes created by older root based versions. The agent process uses the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
+Run these setup commands as `agentbot`. At job startup, the agent container assigns the selected authentication volume to the service account and then drops root before launching Codex or Claude. This automatically migrates volumes created by older root based versions. The agent process uses the same UID and GID as the receiver, which Claude requires and which preserves ownership of job artifacts.
 
-Each task receives a fresh in-memory `/workspace` filesystem. Repository clones and temporary worktrees disappear with the container, while the job record and agent output remain under `WEBHOOK_EVENT_DIR` on the host.
+Each task receives a fresh named Docker volume mounted at `/workspace`. A credentialed repository container clones into it, the agent container edits it without `git`, `gh`, or GitHub credentials, and a credentialed finalization container commits and pushes any changes. The workspace volume is removed after the workflow, while the job record and agent output remain under `WEBHOOK_EVENT_DIR` on the host.
 
 Create the receiver's systemd unit:
 

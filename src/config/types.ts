@@ -32,6 +32,7 @@ export type JevAgentRouterConfig = {
 export type DockerAgentRunnerConfig = {
   command: string;
   image: string;
+  repositoryImage: string;
   pull: boolean;
   codexAuthVolume: string;
   claudeAuthVolume: string;

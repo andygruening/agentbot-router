@@ -17,7 +17,8 @@ test("buildAgentPrompt leaves GitHub responses to the receiver", () => {
   assert.match(prompt, /write the complete public GitHub response markdown to/);
   assert.match(prompt, /reads .*agent-output\.md/);
   assert.match(prompt, /Repository delivery rule/);
-  assert.match(prompt, /container wrapper inspects the checkout/);
+  assert.match(prompt, /separate finalization container inspects the shared checkout/);
+  assert.match(prompt, /Git and GitHub CLI are intentionally unavailable/);
   assert.match(prompt, /creates no branch or pull request/);
   assert.match(prompt, /Do not create branches, worktrees, commits, pushes/);
   assert.match(prompt, /AGENT_WORKER_BLOCKED/);

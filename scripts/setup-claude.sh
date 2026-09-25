@@ -2,7 +2,7 @@
 set -eu
 image=${AGENT_DOCKER_IMAGE:-agentbot-router-agent:latest}
 volume=${CLAUDE_AUTH_VOLUME:-agentbot-router-claude-auth}
-docker build --tag "$image" --file docker/Dockerfile .
+sh scripts/build-images.sh
 docker volume create "$volume" >/dev/null
 uid=$(id -u)
 gid=$(id -g)

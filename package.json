@@ -12,6 +12,7 @@
     "start:ts": "node --env-file-if-exists=.env src/index.ts",
     "clean": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "pnpm clean && tsc -p tsconfig.build.json",
+    "docker:build": "sh scripts/build-images.sh",
     "start": "node --env-file-if-exists=.env dist/src/index.js",
     "setup:codex": "sh scripts/setup-codex.sh",
     "setup:claude": "sh scripts/setup-claude.sh",
